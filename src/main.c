@@ -11,7 +11,7 @@ void show_tree(Node* root, int ntab){
 	}
 
 	for(int i = 0; i < ntab; i++)printf("\t");
-	printf("Node - counter: %d\n", root->counter);
+	printf("Node - (counter: %d, symbol: %s)\n", root->symbol.counter, root->symbol.repr);
 	for(int i = 0; i < ntab + 1; i++)printf("\t");
 	printf("Children:\n");
 	show_tree(root->left_child, ntab + 2);
@@ -31,9 +31,13 @@ int main(int argc, char** argv){
 	
 	// format_file(argv[1], argv[2], utf8_ascii_table);
 
-	int counters[] = {4, 6, 2, 5, 7, 9, 8, 1, 3};
+	Symbol symbols[] = {{"a", 5},
+						 {"b", 2},
+						 {"c", 1},
+						 {"d", 1},
+						 {"r", 2}};
 
-	Node* root = create_tree(counters, 9);
+	Node* root = create_tree(symbols, 5);
 
 	show_tree(root, 1);
 

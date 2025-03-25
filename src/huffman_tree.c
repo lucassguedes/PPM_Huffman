@@ -10,24 +10,19 @@
  * Descrição: Retorna uma árvore de Huffman construída
  * com base nos contadores dos símbolos.
  */
-Node* create_tree(int* counters, int n){
+Node* create_tree(Symbol* symbols, int n){
 
     /*Armazenando os contadores em uma lista de nós.*/
     Node** nodes = (Node**)malloc(sizeof(Node*)*n);
 
     for(int i = 0; i < n; i++){
         nodes[i] = (Node*)malloc(sizeof(Node));
-        nodes[i]->counter = counters[i];
+        nodes[i]->symbol = symbols[i];
         nodes[i]->left_child = nodes[i]->right_child = NULL;
     }
 
     /*Ordenando os nós em ordem crescente de seus contadores.*/
     qsort(nodes, n, sizeof(Node*), compare_nodes);
-
-    printf("Nós:\n");
-    for(int i = 0; i < n; i++){
-        printf("Nó %d - %d\n", i, nodes[i]->counter);
-    }
 
     /**
      * Enquanto houver mais de um nó na lista de nós, construa a árvore de Huffman.
@@ -40,14 +35,16 @@ Node* create_tree(int* counters, int n){
          * O novo nó recebe a soma dos contadores dos dois nós com os
          * menores contadores.
          */
-        printf("n = %d\n", n);
+        char tmp[100];
 
-        printf("Juntando nós com contadores %d e %d\n", nodes[0]->counter, nodes[1]->counter);
+        sprintf(tmp, "%s,%s", nodes[0]->symbol.repr, nodes[1]->symbol.repr);
 
-        new_node->counter = nodes[0]->counter + nodes[1]->counter;
+        new_node->symbol.repr = (char*)malloc(sizeof(char)*(strlen(tmp) + 1));
+        strcpy(new_node->symbol.repr, tmp);
+        new_node->symbol.counter = nodes[0]->symbol.counter + nodes[1]->symbol.counter;
 
         /*Adicionando nós filhos do novo nó*/
-        if(nodes[0]->counter < nodes[1]->counter){
+        if(nodes[0]->symbol.counter < nodes[1]->symbol.counter){
             new_node->left_child = nodes[1];
             new_node->right_child = nodes[0];
         }else{
@@ -60,22 +57,11 @@ Node* create_tree(int* counters, int n){
             nodes[i] = nodes[i+2];
         }
 
-        printf("Nós:\n");
-        for(int i = 0; i < n; i++){
-            printf("Nó %d - %d\n", i, nodes[i]->counter);
-        }
-
         nodes[n-2] = new_node;
         n--;
 
-        
         /*Ordenando nós*/
         qsort(nodes, n, sizeof(Node**), compare_nodes);
-
-        printf("Nós:\n");
-        for(int i = 0; i < n; i++){
-            printf("Nó %d - %d\n", i, nodes[i]->counter);
-        }
         
     }
 
@@ -83,5 +69,5 @@ Node* create_tree(int* counters, int n){
 }
 
 int compare_nodes(const void* a, const void* b){
-	return ((*(Node**)a)->counter - (*(Node**)b)->counter);
+	return ((*(Node**)a)->symbol.counter - (*(Node**)b)->symbol.counter);
 }
