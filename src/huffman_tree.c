@@ -17,7 +17,9 @@ Node* create_tree(Symbol* symbols, int n){
 
     for(int i = 0; i < n; i++){
         nodes[i] = (Node*)malloc(sizeof(Node));
-        nodes[i]->symbol = symbols[i];
+        nodes[i]->symbol.counter = symbols[i].counter;
+        nodes[i]->symbol.repr = (char*)malloc(sizeof(char)*(strlen(symbols[i].repr) + 1));
+        strcpy(nodes[i]->symbol.repr, symbols[i].repr);
         nodes[i]->left_child = nodes[i]->right_child = NULL;
     }
 
@@ -65,7 +67,21 @@ Node* create_tree(Symbol* symbols, int n){
         
     }
 
+    free(nodes);
+
     return new_node;
+}
+
+void destroy_tree(Node* root){
+    if(root == NULL){
+        return;
+    }
+
+    destroy_tree(root->left_child);
+    destroy_tree(root->right_child);
+
+    free(root->symbol.repr);
+    free(root);
 }
 
 int compare_nodes(const void* a, const void* b){

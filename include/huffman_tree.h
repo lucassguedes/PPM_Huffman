@@ -18,6 +18,8 @@ int compare_nodes(const void* a, const void* b);
 
 Node* create_tree(Symbol* counters, int n);
 
+void destroy_tree(Node* root);
+
 
 
 

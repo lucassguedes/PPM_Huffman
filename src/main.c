@@ -41,6 +41,7 @@ int main(int argc, char** argv){
 
 	show_tree(root, 1);
 
+	destroy_tree(root);
 
 
 
