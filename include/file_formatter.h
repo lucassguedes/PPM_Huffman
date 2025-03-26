@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <ctype.h>
 
 bool is_forbidden(char c);
 

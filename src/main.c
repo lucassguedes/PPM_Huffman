@@ -5,6 +5,20 @@
 
 char utf8_ascii_table[256][256];
 
+void get_bin_str(Symbol* symb, char buffer[]){
+	uint64_t value = symb->code.value;
+	const int length = symb->code.length;
+	buffer[length] = '\0';
+	for(int i = 0; i < length; i++){
+		if((value & 1) == 1){
+			buffer[length - i - 1] = '1';
+		}else{
+			buffer[length - i - 1] = '0';
+		}
+		value >>= 1;
+	}
+}
+
 void show_tree(Node* root, int ntab){
 	if(root == NULL){
 		return;
@@ -19,6 +33,10 @@ void show_tree(Node* root, int ntab){
 	return;
 }
 
+int compare_symbols(const void * a, const void * b){
+	return ((Symbol*)a)->counter - ((Symbol*)b)->counter;
+}
+
 int main(int argc, char** argv){
 
 	
@@ -31,17 +49,32 @@ int main(int argc, char** argv){
 	
 	// format_file(argv[1], argv[2], utf8_ascii_table);
 
-	Symbol symbols[] = {{"a", 5},
+	char buffer[33];
+
+
+	Symbol symbols[] = { {"a", 5},
 						 {"b", 2},
 						 {"c", 1},
 						 {"d", 1},
 						 {"r", 2}};
+			 
 
-	Node* root = create_tree(symbols, 5);
+	HuffmanTree* tree = create_tree(symbols, 5); 
 
-	show_tree(root, 1);
+	show_tree(tree->root, 1);
 
-	destroy_tree(root);
+	qsort(symbols, 5, sizeof(Symbol), compare_symbols);
+
+	set_codes(tree, symbols, 5);
+
+	printf("Symbols: \n");
+	for(int i = 0; i < 5; i++){
+		get_bin_str(&symbols[i], buffer);
+		printf("\tSymbol: %s, code: %s (%ld), length: %d\n",symbols[i].repr, buffer, symbols[i].code.value, symbols[i].code.length);
+	}
+	
+	
+	destroy_tree(tree);
 
 
 

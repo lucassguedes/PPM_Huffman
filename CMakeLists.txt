@@ -24,6 +24,9 @@ file(GLOB SOURCES src/*.c)
 
 add_executable(ppm_huffman ${SOURCES})
 
+target_link_libraries(ppm_huffman m)
+
+
 
 target_include_directories(ppm_huffman PUBLIC
 						   include
