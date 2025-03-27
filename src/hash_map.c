@@ -1,8 +1,7 @@
 #include "hash_map.h"
 
 void add_item(Item* map[], Symbol symb){
-    int index = hash(symb.repr);
-
+    int index = hash(symb.repr);    
     Item* new_item = (Item*)malloc(sizeof(Item));
     new_item->value = (Symbol*)malloc(sizeof(Symbol));
     new_item->value->code = symb.code;
@@ -38,16 +37,36 @@ Symbol* get_item(Item* map[], char* key){
 
 void show_map(Item* map[], int size){
     int counter = 1;
+    char buffer[33];
     for(int i = 0; i < size; i++){
         Item* it = map[i];
         while(it != NULL){
             printf("Item %d:\n", counter);
             printf("\tSymbol: %s\n", map[i]->value->repr);
             printf("\tCounter: %d\n", map[i]->value->counter);
+            get_bin_str(map[i]->value, buffer);
+            printf("\tCode: %s\n", buffer);
             it = it->next;
             counter++;
         }
     }
+}
+
+Symbol** extract_symbols(ContextInfo* ctx_info, int table_size){
+    Symbol** symbols = (Symbol**)malloc(sizeof(Symbol*)*ctx_info->n_symb);
+
+    int added = 0;
+    for(int i = 0; i < table_size; i++){
+        Item* it = ctx_info->symb_table[i];
+
+        while(it != NULL){
+            symbols[added] = it->value;
+            added++;
+            it = it->next;
+        }
+    }
+
+    return symbols;
 }
 
 void destroy_map(Item* map[], int size){

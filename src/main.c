@@ -3,28 +3,14 @@
 #include "file_formatter.h"
 #include "huffman_tree.h"
 #include "hash_map.h"
+#include "utils.h"
 
 char utf8_ascii_table[256][256];
-
-void get_bin_str(Symbol* symb, char buffer[]){
-	uint64_t value = symb->code.value;
-	const int length = symb->code.length;
-	buffer[length] = '\0';
-	for(int i = 0; i < length; i++){
-		if((value & 1) == 1){
-			buffer[length - i - 1] = '1';
-		}else{
-			buffer[length - i - 1] = '0';
-		}
-		value >>= 1;
-	}
-}
 
 void show_tree(Node* root, int ntab){
 	if(root == NULL){
 		return;
 	}
-
 	for(int i = 0; i < ntab; i++)printf("\t");
 	printf("Node - (counter: %d, symbol: %s)\n", root->symbol.counter, root->symbol.repr);
 	for(int i = 0; i < ntab + 1; i++)printf("\t");
@@ -35,7 +21,13 @@ void show_tree(Node* root, int ntab){
 }
 
 int compare_symbols(const void * a, const void * b){
-	return ((Symbol*)a)->counter - ((Symbol*)b)->counter;
+	int counter_cmp = ((Symbol*)a)->counter - ((Symbol*)b)->counter;
+
+	if(!counter_cmp){
+		return ((Symbol*)a)->repr[0] - ((Symbol*)b)->repr[0];
+	}
+
+	return counter_cmp;
 }
 
 int main(int argc, char** argv){
@@ -50,57 +42,40 @@ int main(int argc, char** argv){
 	
 	// format_file(argv[1], argv[2], utf8_ascii_table);
 
-	const int hash_map_size = 50000;
+	
+	const int table_size = 50000; 
 
-	Item* map[hash_map_size];
+	/*Cria duas tabelas, uma para o contexto k=-1 (posição 0) e outra para k=0 (posição 1)*/
+	ContextInfo contexts[2];
 
-	for(int i = 0; i < hash_map_size; i++) map[i] = NULL;
+	/*A tabela k=-1 inicialmente deve conter todos os símbolos do alfabeto, com contadores iguais a 1*/
+	contexts[0].n_symb = 27;
+	contexts[0].symb_table = (Item**)malloc(sizeof(Item*)*table_size);
 
-	Symbol s1;
-
-	s1.counter = 5;
-	s1.repr = "a";
-
-	add_item(map, s1);
-
-	s1.counter = 2;
-	s1.repr = "b";
-
-	add_item(map, s1);
+	for(int i = 0; i < contexts[0].n_symb; i++) contexts[0].symb_table[i] = NULL;
 
 
-	s1.counter = 2;
-	s1.repr = "r";
+	/*Adicionando símbolos do alfabeto*/
+	Symbol s;
+	s.repr = (char*)malloc(sizeof(char)*2);
+	strcpy(s.repr, " ");
+	s.counter = 1;
+	
+	add_item(contexts[0].symb_table, s);
 
-	add_item(map, s1);
+	strcpy(s.repr, "a");
+	for(int i = 0; i < 26; i++){
+		add_item(contexts[0].symb_table, s);
+		s.repr[0]++;
+	}
 
-
-	s1.counter = 1;
-	s1.repr = "c";
-
-	add_item(map, s1);
-
-
-	s1.counter = 1;
-	s1.repr = "d";
-
-	add_item(map, s1);
-
-
-	show_map(map, hash_map_size);
-
-	Symbol* s2 = get_item(map, "c");
-
-	printf("Symbol %s, counter: %d\n", s2->repr, s2->counter);
-
-	destroy_map(map, hash_map_size);
-
-
-
-
-
-
-
+	/*Extraindo símbolos da tabela de símbolos - esta operação é feita sempre que a árvore
+	  precisa ser reconstruída.
+	*/
+	Symbol** all_symbols = extract_symbols(&contexts[0], table_size);
+	HuffmanTree* tree = create_tree(all_symbols, 27);
+	/*Atualiza os códigos dos símbolos de acordo com a estrutura da árvore*/
+	set_codes(tree, all_symbols, 27);
 
 	return 0;
 }

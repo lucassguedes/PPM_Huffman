@@ -3,6 +3,7 @@
 #include <string.h>
 #include <math.h>
 #include "huffman_tree.h"
+#include "utils.h"
 #include <stdio.h>
 
 #define A 0.6180339887
@@ -20,6 +21,15 @@ void    add_item(Item* map[], Symbol symb);
 Symbol* get_item(Item* map[], char* key);
 void    show_map(Item* map[], int size);
 void    destroy_map(Item* map[], int size);
+
+
+typedef struct ContextInfo{
+    int n_symb;
+    Item** symb_table;
+    HuffmanTree* tree;
+}ContextInfo;
+
+Symbol** extract_symbols(ContextInfo* ctx_info, int table_size);
 
 
 #endif 

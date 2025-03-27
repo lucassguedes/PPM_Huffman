@@ -10,7 +10,7 @@
  * Descrição: Retorna uma árvore de Huffman construída
  * com base nos contadores dos símbolos.
  */
-HuffmanTree* create_tree(Symbol* symbols, int n){
+HuffmanTree* create_tree(Symbol** symbols, int n){
     HuffmanTree* tree = (HuffmanTree*)malloc(sizeof(HuffmanTree));
 
     /*Armazenando os contadores em uma lista de nós.*/
@@ -20,9 +20,9 @@ HuffmanTree* create_tree(Symbol* symbols, int n){
 
     for(int i = 0; i < n; i++){
         nodes[i] = (Node*)malloc(sizeof(Node));
-        nodes[i]->symbol.counter = symbols[i].counter;
-        nodes[i]->symbol.repr = (char*)malloc(sizeof(char)*(strlen(symbols[i].repr) + 1));
-        strcpy(nodes[i]->symbol.repr, symbols[i].repr);
+        nodes[i]->symbol.counter = symbols[i]->counter;
+        nodes[i]->symbol.repr = (char*)malloc(sizeof(char)*(strlen(symbols[i]->repr) + 1));
+        strcpy(nodes[i]->symbol.repr, symbols[i]->repr);
         nodes[i]->parent = nodes[i]->left_child = nodes[i]->right_child = NULL;
         nodes[i]->symbol.code.value = 0;
         nodes[i]->symbol.code.length = 0;
@@ -104,7 +104,7 @@ bool is_right_child(Node* node){
     return node->parent != NULL && node->parent->right_child == node;
 }
 
-void set_codes(HuffmanTree* tree, Symbol* symbols, int n){
+void set_codes(HuffmanTree* tree, Symbol** symbols, int n){
     /*Consideramos  que os símbolos das folhas da árvore
       estão na mesma ordem dos símbolos em symbols, isto
       é, em ordem crescente de seus contadores.
@@ -113,15 +113,15 @@ void set_codes(HuffmanTree* tree, Symbol* symbols, int n){
         /*Encontra o código correspondente*/
         Node* node = tree->leafs[i];
 
-        symbols[i].code.value = 0;
-        symbols[i].code.length = 0;
+        symbols[i]->code.value = 0;
+        symbols[i]->code.length = 0;
         while(node != NULL){
             if(node->parent != NULL){
-                // symbols[i].code.value = symbols[i].code.value << 1;
+                // symbols[i]->code.value = symbols[i]->code.value << 1;
                 if(is_left_child(node)){
-                    symbols[i].code.value |= (int)pow(2, symbols[i].code.length);
+                    symbols[i]->code.value |= (int)pow(2, symbols[i]->code.length);
                 }
-                symbols[i].code.length++;
+                symbols[i]->code.length++;
             }
             
 
@@ -149,5 +149,11 @@ void destroy_tree(HuffmanTree* tree){
 }
 
 int compare_nodes(const void* a, const void* b){
-	return ((*(Node**)a)->symbol.counter - (*(Node**)b)->symbol.counter);
+    int counter_cmp = ((*(Node**)a)->symbol.counter - (*(Node**)b)->symbol.counter);
+
+    if(!counter_cmp){
+        return ((*(Node**)a)->symbol.repr[0] - (*(Node**)b)->symbol.repr[0]);
+    }
+
+	return counter_cmp;
 }
