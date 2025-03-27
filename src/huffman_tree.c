@@ -143,6 +143,11 @@ void destroy_graph(Node* root){
 }
 
 void destroy_tree(HuffmanTree* tree){
+
+    if(tree == NULL){
+        return;
+    }
+
     destroy_graph(tree->root);
     free(tree->leafs);
     free(tree);

@@ -23,16 +23,83 @@ void add_item(Item* map[], Symbol symb){
     }
 }
 
+void remove_item(Item* map[], int size, char* key){
+    for(int i = 0; i < size; i++){
+        Item* it = map[i];
+        Item* prev = NULL;
+        while(it != NULL){
+            if(!strcmp(it->value->repr, key)){//Se encontrou o símbolo
+                if(prev != NULL){
+                    prev->next = it->next;
+                }else{
+                    map[i] = it->next;
+                }
+   
+                free(it->value->repr);
+                free(it->value);
+                free(it);
+                break;
+            }
+            prev = it;
+            it = it->next;
+        }
+    }
+}
+
+void decrement_item(Item* map[], int size, char* key){
+    for(int i = 0; i < size; i++){
+        Item* it = map[i];
+        Item* prev = NULL;
+        while(it != NULL){
+            if(!strcmp(it->value->repr, key)){//Se encontrou o símbolo
+                it->value->counter--;
+
+                if(!it->value->counter){
+                    if(prev != NULL){
+                        prev->next = it->next;
+                    }else{
+                        map[i] = it->next;
+                    }
+   
+                    free(it->value->repr);
+                    free(it->value);
+                    free(it);
+                }
+                break;
+            }
+            prev = it;
+            it = it->next;
+        }
+    }
+}
+
+void increment_item(Item* map[], int size, char* key){
+    for(int i = 0; i < size; i++){
+        Item* it = map[i];
+        while(it != NULL){
+            if(!strcmp(it->value->repr, key)){//Se encontrou o símbolo
+                it->value->counter++;
+                break;
+            }
+            it = it->next;
+        }
+    }
+}
+
 Symbol* get_item(Item* map[], char* key){
     int index = hash(key);
 
     Item* it = map[index];
 
-    while(strcmp(it->value->repr, key)){
+    while(it != NULL){
+        if(!strcmp(it->value->repr, key))
+        {
+            return it->value;
+        }
         it = it->next;
     }
 
-    return it->value; 
+    return NULL; 
 }
 
 void show_map(Item* map[], int size){
@@ -42,9 +109,9 @@ void show_map(Item* map[], int size){
         Item* it = map[i];
         while(it != NULL){
             printf("Item %d:\n", counter);
-            printf("\tSymbol: %s\n", map[i]->value->repr);
-            printf("\tCounter: %d\n", map[i]->value->counter);
-            get_bin_str(map[i]->value, buffer);
+            printf("\tSymbol: %s\n", it->value->repr);
+            printf("\tCounter: %d\n", it->value->counter);
+            get_bin_str(it->value, buffer);
             printf("\tCode: %s\n", buffer);
             it = it->next;
             counter++;
@@ -81,7 +148,9 @@ void destroy_map(Item* map[], int size){
 			free(it);
 			it = next;
 		}
+        map[i] = NULL;
 	}
+    free(map);
 }
 
 
