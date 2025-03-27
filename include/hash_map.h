@@ -1,0 +1,25 @@
+#ifndef __HASH_H__
+#define __HASH_MAP_H__
+#include <string.h>
+#include <math.h>
+#include "huffman_tree.h"
+#include <stdio.h>
+
+#define A 0.6180339887
+#define M pow(2, 14)
+
+
+/*Representa um item de hash map (lista encadeada de símbolos)*/
+typedef struct Item{
+    struct Item* next;
+    Symbol* value;
+}Item;
+
+int     hash(char* key);
+void    add_item(Item* map[], Symbol symb);
+Symbol* get_item(Item* map[], char* key);
+void    show_map(Item* map[], int size);
+void    destroy_map(Item* map[], int size);
+
+
+#endif 

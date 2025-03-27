@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "file_formatter.h"
 #include "huffman_tree.h"
-#include "hash.h"
+#include "hash_map.h"
 
 char utf8_ascii_table[256][256];
 
@@ -50,18 +50,50 @@ int main(int argc, char** argv){
 	
 	// format_file(argv[1], argv[2], utf8_ascii_table);
 
-	printf("hash(%s) = %d\n", "a", hash("a"));
-	printf("hash(%s) = %d\n", "a ", hash("a "));
-	printf("hash(%s) = %d\n", "b", hash("b"));
-	printf("hash(%s) = %d\n", "c", hash("c"));
-	printf("hash(%s) = %d\n", "d", hash("d"));
-	printf("hash(%s) = %d\n", "r", hash("r"));
-	printf("hash(%s) = %d\n", "ab", hash("ab"));
-	printf("hash(%s) = %d\n", "ac", hash("ac"));
-	printf("hash(%s) = %d\n", "ad", hash("ad"));
-	printf("hash(%s) = %d\n", "br", hash("br"));
-	printf("hash(%s) = %d\n", "ca", hash("ca"));
-	printf("hash(%s) = %d\n", "ra", hash("ra"));
+	const int hash_map_size = 50000;
+
+	Item* map[hash_map_size];
+
+	for(int i = 0; i < hash_map_size; i++) map[i] = NULL;
+
+	Symbol s1;
+
+	s1.counter = 5;
+	s1.repr = "a";
+
+	add_item(map, s1);
+
+	s1.counter = 2;
+	s1.repr = "b";
+
+	add_item(map, s1);
+
+
+	s1.counter = 2;
+	s1.repr = "r";
+
+	add_item(map, s1);
+
+
+	s1.counter = 1;
+	s1.repr = "c";
+
+	add_item(map, s1);
+
+
+	s1.counter = 1;
+	s1.repr = "d";
+
+	add_item(map, s1);
+
+
+	show_map(map, hash_map_size);
+
+	Symbol* s2 = get_item(map, "c");
+
+	printf("Symbol %s, counter: %d\n", s2->repr, s2->counter);
+
+	destroy_map(map, hash_map_size);
 
 
 

@@ -17,6 +17,7 @@ typedef struct Symbol{
     Code code;
 }Symbol;
 
+/*Nó da árvore de Huffman*/
 typedef struct Node{
     Symbol symbol;
     bool is_leaf;
@@ -25,6 +26,7 @@ typedef struct Node{
     struct Node* right_child;   
 }Node;
 
+/*Árvore de Huffman*/
 typedef struct HuffmanTree{
     Node* root;
     Node** leafs;
