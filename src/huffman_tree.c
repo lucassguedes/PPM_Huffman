@@ -88,10 +88,17 @@ HuffmanTree* create_tree(Symbol** symbols, int n){
     }
 
     
-    free(nodes);
     
-    new_node->parent = NULL;
-    tree->root = new_node;
+    /*Quando n == 1, new_node será NULL*/
+    if(new_node != NULL){
+        new_node->parent = NULL;
+        tree->root = new_node;
+    }else{
+        tree->root = nodes[0];
+    }
+    
+    free(nodes);
+
 
     return tree;
 }
