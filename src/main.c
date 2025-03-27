@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "file_formatter.h"
 #include "huffman_tree.h"
+#include "hash.h"
 
 char utf8_ascii_table[256][256];
 
@@ -49,32 +50,23 @@ int main(int argc, char** argv){
 	
 	// format_file(argv[1], argv[2], utf8_ascii_table);
 
-	char buffer[33];
+	printf("hash(%s) = %d\n", "a", hash("a"));
+	printf("hash(%s) = %d\n", "a ", hash("a "));
+	printf("hash(%s) = %d\n", "b", hash("b"));
+	printf("hash(%s) = %d\n", "c", hash("c"));
+	printf("hash(%s) = %d\n", "d", hash("d"));
+	printf("hash(%s) = %d\n", "r", hash("r"));
+	printf("hash(%s) = %d\n", "ab", hash("ab"));
+	printf("hash(%s) = %d\n", "ac", hash("ac"));
+	printf("hash(%s) = %d\n", "ad", hash("ad"));
+	printf("hash(%s) = %d\n", "br", hash("br"));
+	printf("hash(%s) = %d\n", "ca", hash("ca"));
+	printf("hash(%s) = %d\n", "ra", hash("ra"));
 
 
-	Symbol symbols[] = { {"a", 5},
-						 {"b", 2},
-						 {"c", 1},
-						 {"d", 1},
-						 {"r", 2}};
-			 
 
-	HuffmanTree* tree = create_tree(symbols, 5); 
 
-	show_tree(tree->root, 1);
 
-	qsort(symbols, 5, sizeof(Symbol), compare_symbols);
-
-	set_codes(tree, symbols, 5);
-
-	printf("Symbols: \n");
-	for(int i = 0; i < 5; i++){
-		get_bin_str(&symbols[i], buffer);
-		printf("\tSymbol: %s, code: %s (%ld), length: %d\n",symbols[i].repr, buffer, symbols[i].code.value, symbols[i].code.length);
-	}
-	
-	
-	destroy_tree(tree);
 
 
 
