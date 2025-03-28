@@ -33,7 +33,7 @@ void initialize_equiprob_table(ContextInfo *ctx)
     Symbol **all_symbols = extract_symbols(ctx, TABLE_SIZE);
     ctx->tree = create_tree(all_symbols, 27);
     /*Atualiza os códigos dos símbolos de acordo com a estrutura da árvore*/
-    set_codes(ctx->tree, all_symbols, 27);
+    set_codes(ctx, all_symbols, 27);
 
     printf("K=-1 - Symbols:\n");
     char code_str[30];
@@ -90,7 +90,7 @@ void rebuild_tree(ContextInfo* ctx){
         destroy_tree(ctx->tree);
         extracted_symbols = extract_symbols(ctx, TABLE_SIZE);
         ctx->tree = create_tree(extracted_symbols, ctx->n_symb);
-        set_codes(ctx->tree, extracted_symbols, ctx->n_symb);
+        set_codes(ctx, extracted_symbols, ctx->n_symb);
 
         char code_str[30];
         printf("<<< all symbols >>>\n");
@@ -323,6 +323,7 @@ void decompress(char *input_filepath, char *output_filepath)
         remaining_bits = 8;
 
         while(remaining_bits){
+            printf("explored: %d/%d\n", explored, file_size);
             code->value = code->value << 1;
             code->value |= (byte & (int)pow(2, remaining_bits) - 1) >> (remaining_bits - 1);
             code->length++;
@@ -334,7 +335,7 @@ void decompress(char *input_filepath, char *output_filepath)
             xs.code = *code;
             get_bin_str(&xs, code_str);
 
-            printf("Code: %s\n", code_str);
+            printf("Code: %s, max_search_length: %d\n", code_str, contexts[K0_TABLE].max_search_length);
 
             printf("skip_k0 = %d\n", skip_k0);
 
@@ -363,9 +364,11 @@ void decompress(char *input_filepath, char *output_filepath)
                     printf("Mandando \033[0;31m\"%s\"\033[0m\n", found_symbol->repr);
                     increment_item(contexts[K0_TABLE].symb_table, TABLE_SIZE, found_symbol->repr);
                     code->length = code->value = 0;
+                    explored++;
                     getchar();
                 }
-            }else if((found_symbol = search_code(contexts[EQPROB_TABLE].symb_table, code)) != NULL){
+            }else if(code->length >= contexts[K0_TABLE].max_search_length && (found_symbol = search_code(contexts[EQPROB_TABLE].symb_table, code)) != NULL){
+                explored++;
                 printf("Mandando \033[0;32m\"%s\"\033[0m\n", found_symbol->repr);
                 add_to_context(&contexts[K0_TABLE], found_symbol->repr);
 
@@ -383,6 +386,10 @@ void decompress(char *input_filepath, char *output_filepath)
 
             rebuild_tree(&contexts[EQPROB_TABLE]);
             rebuild_tree(&contexts[K0_TABLE]);
+
+            if(explored == file_size){
+                break;
+            }
 
         }
     }

@@ -165,3 +165,57 @@ int hash(char* key){
 	/*Aplicando o método da multiplicação*/
 	return (int)floor(M*(k*A - floor(k*A)));
 }
+
+int compare_symbols(const void * a, const void * b){
+    Symbol* sa = *(Symbol**)a;
+    Symbol* sb = *(Symbol**)b;
+	int counter_cmp = sa->counter - sb->counter;
+	if(!counter_cmp){
+		return strcmp(sb->repr, sa->repr);
+	}
+
+	return counter_cmp;
+}
+
+void set_codes(ContextInfo* ctx, Symbol** symbols, int n){
+    /*Consideramos  que os símbolos das folhas da árvore
+      estão na mesma ordem dos símbolos em symbols, isto
+      é, em ordem crescente de seus contadores.
+    */
+    // printf("\033[0;31mset-codes...\033[0m\n");
+
+    HuffmanTree* tree = ctx->tree;
+
+    qsort(symbols, n, sizeof(Symbol*), compare_symbols);
+
+    ctx->max_search_length = 0;
+
+    for(int i = 0; i < n; i++){
+        /*Encontra o código correspondente*/
+        Node* node = tree->leafs[i];
+
+        symbols[i]->code.value = 0;
+        symbols[i]->code.length = 0;
+        // printf("Símbolo \"%s\"...", node->symbol.repr);
+        while(node != NULL){
+            if(node->parent != NULL){
+                // symbols[i]->code.value = symbols[i]->code.value << 1;
+                if(is_left_child(node)){
+                    // printf("1");
+                    symbols[i]->code.value |= (int)pow(2, symbols[i]->code.length);
+                }else{
+                    // printf("0");
+                }
+                symbols[i]->code.length++;
+            }
+            node = node->parent;
+        }
+        if(symbols[i]->code.length > ctx->max_search_length){
+            ctx->max_search_length = symbols[i]->code.length;
+        }
+        // printf(", Length: %d", symbols[i]->code.length);
+        // printf("\n");
+    }
+    // printf("\033[0;31mend set-codes...\033[0m\n");
+
+}

@@ -5,6 +5,7 @@
 #include "huffman_tree.h"
 #include "utils.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 #define A 0.6180339887
 #define M pow(2, 14)
@@ -25,12 +26,17 @@ Symbol* get_item(Item* map[], char* key);
 void    show_map(Item* map[], int size);
 void    destroy_map(Item* map[], int size);
 
-
 typedef struct ContextInfo{
     int n_symb;
+    int max_search_length; /*Comprimento máximo de bits a buscar antes de passar para a próxima tabela*/
     Item** symb_table;
     HuffmanTree* tree;
 }ContextInfo;
+
+/*Dada uma  lista  de  símbolos  "symbols" e uma árvore
+  de Huffman "tree", atribui os códigos correspondentes
+  a cada símbolo de acordo com a estrutura da árvore.*/
+void set_codes(ContextInfo* ctx, Symbol** symbols, int n);
 
 Symbol** extract_symbols(ContextInfo* ctx_info, int table_size);
 

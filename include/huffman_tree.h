@@ -39,11 +39,6 @@ HuffmanTree* create_tree(Symbol** symbols, int n);
 bool is_left_child(Node* node);
 bool is_right_child(Node* node);
 
-/*Dada uma  lista  de  símbolos  "symbols" e uma árvore
-  de Huffman "tree", atribui os códigos correspondentes
-  a cada símbolo de acordo com a estrutura da árvore.*/
-void set_codes(HuffmanTree* tree, Symbol** symbols, int n);
-
 void destroy_tree(HuffmanTree* root);
 void destroy_graph(Node* root);
 
