@@ -5,6 +5,7 @@
 
 void get_bin_str(Symbol* symb, char buffer[]);
 
+void show_tree(Node* root, int ntab);
 
 
 

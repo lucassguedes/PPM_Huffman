@@ -13,3 +13,16 @@ void get_bin_str(Symbol* symb, char buffer[]){
 		value >>= 1;
 	}
 }
+
+void show_tree(Node* root, int ntab){
+	if(root == NULL){
+		return;
+	}
+	for(int i = 0; i < ntab; i++)printf("\t");
+	printf("Node - (counter: %d, symbol: %s)\n", root->symbol.counter, root->symbol.repr);
+	for(int i = 0; i < ntab + 1; i++)printf("\t");
+	printf("Children:\n");
+	show_tree(root->left_child, ntab + 2);
+	show_tree(root->right_child, ntab + 2);
+	return;
+}

@@ -3,6 +3,7 @@
 #include "huffman_tree.h"
 #include "hash_map.h"
 #include <stdlib.h>
+#include "utils.h"
 
 #define TABLE_SIZE 50000
 
