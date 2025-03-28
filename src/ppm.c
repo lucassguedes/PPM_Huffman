@@ -45,6 +45,8 @@ void initialize_ppm_table(ContextInfo* ctx){
 	for(int i = 0; i < ctx->n_symb; i++) ctx->symb_table[i] = NULL;
 }
 
+// void write_code_to_file(FILE* outfile, uint8_t* outbuffer, int* remaining_bits)
+
 void compress(char* input_filepath, char* output_filepath){
 
 	/*Cria duas tabelas, uma para o contexto k=-1 (posição 0) e outra para k=0 (posição 1)*/
@@ -54,6 +56,7 @@ void compress(char* input_filepath, char* output_filepath){
     initialize_ppm_table(&contexts[K0_TABLE]);
 
     FILE* file = fopen(input_filepath, "r");
+    FILE* outfile = fopen(output_filepath, "w");
 
     char c;
     char buffer[5];
@@ -61,24 +64,43 @@ void compress(char* input_filepath, char* output_filepath){
     Symbol** extracted_symbols;
     Symbol new_symbol;
 
-    char outputstring[3000000];
     char code_str[30];
+
     int n_bits = 0;
 
-    sprintf(outputstring, "");
+    uint8_t outbuffer = 0; /*Byte a ser mandado para a saída.*/
+    int remaining_bits = 8; /*Número restante de bits livres em outbuffer*/
 
     while((c = fgetc(file)) != EOF){
         sprintf(buffer, "%c", c);
         sb = get_item(contexts[K0_TABLE].symb_table, buffer);
         if(sb != NULL){ /** Se o símbolo atual FOI encontrado na tabela k=0 */
-
             /*Icrementa o contador do símbolo*/
             increment_item(contexts[K0_TABLE].symb_table, TABLE_SIZE, buffer);
             
-            /*Manda o código do símbolo para a saída*/
             get_bin_str(sb, code_str);
-            printf("Símbolo '%s' encontrado na tabela k=0... com código %s\n", sb->repr, code_str);
-            strcat(outputstring, code_str);
+            printf("Símbolo '%s' encontrado na tabela k=0...\033[0;32mcom código %s\033[0m\n", sb->repr, code_str);
+            /*Manda o código do símbolo para a saída*/
+            if(remaining_bits >= sb->code.length){ /*Se for possível inserir o código inteiro no byte atual*/
+                outbuffer = outbuffer << sb->code.length;
+                outbuffer = outbuffer | sb->code.value;
+                remaining_bits -= sb->code.length;
+            }else{ /*Se não for possível...*/
+                outbuffer = outbuffer << remaining_bits; 
+                /*Número de bits restantes no código (que precisam ser inseridos no próximo byte)*/ 
+                int n_rest = sb->code.length - remaining_bits; 
+
+                uint64_t code_slice = sb->code.value >> n_rest; /*Extraindo o pedaço do código que cabe no byte atual*/
+                outbuffer = outbuffer | code_slice;
+                /*Escrevendo na saída*/
+                fputc(outbuffer, outfile);
+                outbuffer = 0; /*Limpando o buffer*/
+                /*Extraindo somente os bits que restaram da inserção anterior*/
+                int mask = pow(2, n_rest) - 1;
+                code_slice = sb->code.value & mask;
+                outbuffer = outbuffer | code_slice;
+                remaining_bits = 8 - n_rest;
+            }
             n_bits += sb->code.length;
             
             /*Reconstruindo a árvore de k=0*/
@@ -93,7 +115,7 @@ void compress(char* input_filepath, char* output_filepath){
             printf("Símbolo '%c' não encontrado na tabela k=0, chaveando para k=-1...\n", c);
             sb = get_item(contexts[EQPROB_TABLE].symb_table, buffer);
             if(sb != NULL){
-                printf("Símbolo %s encontrado na tabela k=-1... (N = %d)\n", buffer, contexts[EQPROB_TABLE].n_symb);
+                printf("Símbolo %s encontrado na tabela k=-1 (N = %d)\n", buffer, contexts[EQPROB_TABLE].n_symb);
                 
                 /*Adicionando o símbolo na tabela k=0 */     
                 new_symbol.repr = (char*)malloc(sizeof(char)*(strlen(buffer) + 1));
@@ -108,10 +130,29 @@ void compress(char* input_filepath, char* output_filepath){
                 if(rho != NULL){ /**Se o símbolo 'rho' já existe na tabela k=0 */
                     increment_item(contexts[K0_TABLE].symb_table, TABLE_SIZE, RHO);
                     /*Mandando o código de 'rho' para a saída*/
+                    if(remaining_bits >= rho->code.length){ /*Se for possível inserir o código inteiro no byte atual*/
+                        outbuffer = outbuffer << rho->code.length;
+                        outbuffer = outbuffer | rho->code.value;
+                        remaining_bits -= rho->code.length;
+                    }else{ /*Se não for possível...*/
+                        outbuffer = outbuffer << remaining_bits; 
+                        /*Número de bits restantes no código (que precisam ser inseridos no próximo byte)*/ 
+                        int n_rest = rho->code.length - remaining_bits; 
+        
+                        uint64_t code_slice = rho->code.value >> n_rest; /*Extraindo o pedaço do código que cabe no byte atual*/
+                        outbuffer = outbuffer | code_slice;
+                        /*Escrevendo na saída*/
+                        fputc(outbuffer, outfile);
+                        outbuffer = 0; /*Limpando o buffer*/
+                        /*Extraindo somente os bits que restaram da inserção anterior*/
+                        int mask = pow(2, n_rest) - 1;
+                        code_slice = rho->code.value & mask;
+                        outbuffer = outbuffer | code_slice;
+                        remaining_bits = 8 - n_rest;
+                    }
+                    n_bits+=rho->code.length;
                     get_bin_str(rho, code_str);
-                    strcat(outputstring, code_str); 
-                    n_bits+=new_symbol.code.length;
-                    printf("\t\tMandando código de rho para a saída\n");
+                    printf("\t\tMandando código de rho para a saída. \033[0;32mCódigo: %s\033[0m\n", code_str);
                 }else{ /*Se o símbolo 'rho' ainda não estiver na tabela k=0*/
                     /*Adiciona 'rho' à tabela*/
                     new_symbol.repr = RHO;
@@ -124,9 +165,28 @@ void compress(char* input_filepath, char* output_filepath){
 
                 /*Mandando código do símbolo para a saída (a partir da tabela de equiprobabilidade)*/
                 if(contexts[EQPROB_TABLE].n_symb > 1){
-                    printf("\t\tMandando código de %s para a saída\n", sb->repr);
                     get_bin_str(sb, code_str);
-                    strcat(outputstring, code_str);
+                    printf("\t\tMandando código de %s para a saída. \033[0;32mCódigo: %s\033[0m\n", sb->repr, code_str);
+                    if(remaining_bits >= sb->code.length){ /*Se for possível inserir o código inteiro no byte atual*/
+                        outbuffer = outbuffer << sb->code.length;
+                        outbuffer = outbuffer | sb->code.value;
+                        remaining_bits -= sb->code.length;
+                    }else{ /*Se não for possível...*/
+                        outbuffer = outbuffer << remaining_bits; 
+                        /*Número de bits restantes no código (que precisam ser inseridos no próximo byte)*/ 
+                        int n_rest = sb->code.length - remaining_bits; 
+        
+                        uint64_t code_slice = sb->code.value >> n_rest; /*Extraindo o pedaço do código que cabe no byte atual*/
+                        outbuffer = outbuffer | code_slice;
+                        /*Escrevendo na saída*/
+                        fputc(outbuffer, outfile);
+                        outbuffer = 0; /*Limpando o buffer*/
+                        /*Extraindo somente os bits que restaram da inserção anterior*/
+                        int mask = pow(2, n_rest) - 1;
+                        code_slice = sb->code.value & mask;
+                        outbuffer = outbuffer | code_slice;
+                        remaining_bits = 8 - n_rest;
+                    }
                     n_bits+= sb->code.length;
                 }else{
                     /*Se não houverem mais símbolos na tabela de equiprobabilidade, então 
@@ -150,7 +210,7 @@ void compress(char* input_filepath, char* output_filepath){
                     set_codes(contexts[EQPROB_TABLE].tree, extracted_symbols, contexts[EQPROB_TABLE].n_symb);
                     free(extracted_symbols);
                 }else{ /*Caso contrário, a árvore não será mais construída*/
-                    contexts[EQPROB_TABLE].tree = NULL;
+                    contexts[EQPROB_TABLE].tree = NULL; 
                 }
 
                 /*Reconstruindo árvore de contexto k=0*/
@@ -163,6 +223,11 @@ void compress(char* input_filepath, char* output_filepath){
 
             }
         }
+    }
+
+    if(remaining_bits){
+        outbuffer = outbuffer << remaining_bits;
+        fputc(outbuffer, outfile);
     }
 
     printf("Number of bits: %d\n", n_bits);
