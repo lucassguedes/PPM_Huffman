@@ -56,65 +56,65 @@ void compress(char* input_filepath, char* output_filepath){
     FILE* file = fopen(input_filepath, "r");
 
     char c;
-    int k;
     char buffer[5];
     Symbol* sb;
     Symbol** extracted_symbols;
     Symbol new_symbol;
 
-    char outputstring[3000];
+    char outputstring[3000000];
     char code_str[30];
+    int n_bits = 0;
 
     sprintf(outputstring, "");
 
     while((c = fgetc(file)) != EOF){
-        k = K0_TABLE;
         sprintf(buffer, "%c", c);
-        sb = get_item(contexts[k].symb_table, buffer);
-        if(sb != NULL){
-            printf("Símbolo '%s' encontrado na tabela k=0...\n", sb->repr);
-            increment_item(contexts[K0_TABLE].symb_table, TABLE_SIZE, buffer);
-            /*Destruindo a árvore de k=0*/
-            destroy_tree(contexts[K0_TABLE].tree);
+        sb = get_item(contexts[K0_TABLE].symb_table, buffer);
+        if(sb != NULL){ /** Se o símbolo atual FOI encontrado na tabela k=0 */
 
+            /*Icrementa o contador do símbolo*/
+            increment_item(contexts[K0_TABLE].symb_table, TABLE_SIZE, buffer);
+            
+            /*Manda o código do símbolo para a saída*/
+            get_bin_str(sb, code_str);
+            printf("Símbolo '%s' encontrado na tabela k=0... com código %s\n", sb->repr, code_str);
+            strcat(outputstring, code_str);
+            n_bits += sb->code.length;
+            
             /*Reconstruindo a árvore de k=0*/
+            destroy_tree(contexts[K0_TABLE].tree);
             extracted_symbols = extract_symbols(&contexts[K0_TABLE], TABLE_SIZE);
             contexts[K0_TABLE].tree = create_tree(extracted_symbols, contexts[K0_TABLE].n_symb);
+            set_codes(contexts[K0_TABLE].tree, extracted_symbols, contexts[K0_TABLE].n_symb);
             free(extracted_symbols);
             extracted_symbols = NULL;
         }
-        else{
+        else{/*Se o símbolo atual NÃO FOI encontrado na tabela k=0*/
             printf("Símbolo '%c' não encontrado na tabela k=0, chaveando para k=-1...\n", c);
-            k = EQPROB_TABLE;
-            sb = get_item(contexts[k].symb_table, buffer);
+            sb = get_item(contexts[EQPROB_TABLE].symb_table, buffer);
             if(sb != NULL){
                 printf("Símbolo %s encontrado na tabela k=-1... (N = %d)\n", buffer, contexts[EQPROB_TABLE].n_symb);
                 
-                if(contexts[EQPROB_TABLE].n_symb > 1){
-                    printf("\t\tMandando código de %s para a saída\n", sb->repr);
-                    get_bin_str(sb, code_str);
-                    strcat(outputstring, code_str);
-                }
-
                 /*Adicionando o símbolo na tabela k=0 */     
                 new_symbol.repr = (char*)malloc(sizeof(char)*(strlen(buffer) + 1));
                 strcpy(new_symbol.repr, buffer);
-
                 add_item(contexts[K0_TABLE].symb_table, new_symbol);
                 contexts[K0_TABLE].n_symb++;
 
                 free(new_symbol.repr);
         
-                sb = get_item(contexts[K0_TABLE].symb_table, "rho");
+                Symbol* rho = get_item(contexts[K0_TABLE].symb_table, RHO);
                 /*Adicionando 'rho' na tabela k=0 (ou incrementando)*/
-                if(sb != NULL){
-                    increment_item(contexts[K0_TABLE].symb_table, TABLE_SIZE, "rho");
-                    printf("Aqui. Código do rho: %d\n", sb->code.value);
-                    get_bin_str(sb, code_str);
+                if(rho != NULL){ /**Se o símbolo 'rho' já existe na tabela k=0 */
+                    increment_item(contexts[K0_TABLE].symb_table, TABLE_SIZE, RHO);
+                    /*Mandando o código de 'rho' para a saída*/
+                    get_bin_str(rho, code_str);
                     strcat(outputstring, code_str); 
+                    n_bits+=new_symbol.code.length;
                     printf("\t\tMandando código de rho para a saída\n");
-                }else{
-                    new_symbol.repr = "rho";
+                }else{ /*Se o símbolo 'rho' ainda não estiver na tabela k=0*/
+                    /*Adiciona 'rho' à tabela*/
+                    new_symbol.repr = RHO;
                     new_symbol.counter = 1;
                     new_symbol.code.value = 0;
                     new_symbol.code.length = 0;
@@ -122,37 +122,51 @@ void compress(char* input_filepath, char* output_filepath){
                     contexts[K0_TABLE].n_symb++;
                 }
 
+                /*Mandando código do símbolo para a saída (a partir da tabela de equiprobabilidade)*/
+                if(contexts[EQPROB_TABLE].n_symb > 1){
+                    printf("\t\tMandando código de %s para a saída\n", sb->repr);
+                    get_bin_str(sb, code_str);
+                    strcat(outputstring, code_str);
+                    n_bits+= sb->code.length;
+                }else{
+                    /*Se não houverem mais símbolos na tabela de equiprobabilidade, então 
+                      não há mais símbolos desconhecidos e podemos remover o rho da tabela.
+                    */
+                    remove_item(contexts[K0_TABLE].symb_table, TABLE_SIZE, RHO);
+                    contexts[K0_TABLE].n_symb--;
+                }
+
                 /*Removendo símbolo da tabela k=-1*/
                 remove_item(contexts[EQPROB_TABLE].symb_table, TABLE_SIZE, buffer);
                 contexts[EQPROB_TABLE].n_symb--;
                 /*Reconstruindo árvores*/
-                destroy_tree(contexts[EQPROB_TABLE].tree);
                 
-                if(contexts[EQPROB_TABLE].n_symb){
+                /*Reconstruindo a árvore da tabela de equiprobabilidade*/
+                destroy_tree(contexts[EQPROB_TABLE].tree);
+                if(contexts[EQPROB_TABLE].n_symb){ /*Se ainda houverem símbolos na tabela*/
                     extracted_symbols = extract_symbols(&contexts[EQPROB_TABLE], TABLE_SIZE);
                     contexts[EQPROB_TABLE].tree = create_tree(extracted_symbols, contexts[EQPROB_TABLE].n_symb);
+
+                    set_codes(contexts[EQPROB_TABLE].tree, extracted_symbols, contexts[EQPROB_TABLE].n_symb);
                     free(extracted_symbols);
-                }else{
+                }else{ /*Caso contrário, a árvore não será mais construída*/
                     contexts[EQPROB_TABLE].tree = NULL;
                 }
 
-
+                /*Reconstruindo árvore de contexto k=0*/
                 destroy_tree(contexts[K0_TABLE].tree);
-
-                if(contexts[K0_TABLE].n_symb){
-                    extracted_symbols = extract_symbols(&contexts[K0_TABLE], TABLE_SIZE);
-                    contexts[K0_TABLE].tree = create_tree(extracted_symbols, contexts[K0_TABLE].n_symb);
-                    free(extracted_symbols);
-                    extracted_symbols = NULL;
-                }else{
-                    contexts[EQPROB_TABLE].tree = NULL;
-                }
+                extracted_symbols = extract_symbols(&contexts[K0_TABLE], TABLE_SIZE);
+                contexts[K0_TABLE].tree = create_tree(extracted_symbols, contexts[K0_TABLE].n_symb);
+                set_codes(contexts[K0_TABLE].tree, extracted_symbols, contexts[K0_TABLE].n_symb);
+                free(extracted_symbols);
+                extracted_symbols = NULL;
 
             }
         }
     }
 
-    printf("Saída: %s\n", outputstring);
+    printf("Number of bits: %d\n", n_bits);
+    // printf("Saída: %s\n", outputstring);
 
     fclose(file);
     destroy_tree(contexts[EQPROB_TABLE].tree);

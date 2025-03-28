@@ -6,6 +6,8 @@
 
 #define TABLE_SIZE 50000
 
+#define RHO "`"
+
 enum{
     EQPROB_TABLE,
     K0_TABLE,
