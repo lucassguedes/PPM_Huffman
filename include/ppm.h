@@ -24,6 +24,7 @@ enum{
 void initialize_equiprob_table(ContextInfo* ctx);
 void initialize_ppm_table(ContextInfo* ctx);
 void compress(char* input_filepath, char* output_filepath);
+void write_code_to_file(FILE* outfile, Symbol* sb, uint8_t* outbuffer, int* remaining_bits);
 
 
 

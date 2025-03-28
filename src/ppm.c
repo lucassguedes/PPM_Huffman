@@ -45,7 +45,28 @@ void initialize_ppm_table(ContextInfo* ctx){
 	for(int i = 0; i < ctx->n_symb; i++) ctx->symb_table[i] = NULL;
 }
 
-// void write_code_to_file(FILE* outfile, uint8_t* outbuffer, int* remaining_bits)
+void write_code_to_file(FILE* outfile, Symbol* sb, uint8_t* outbuffer, int* remaining_bits){
+    if(*remaining_bits >= sb->code.length){ /*Se for possível inserir o código inteiro no byte atual*/
+        *outbuffer = *outbuffer << sb->code.length;
+        *outbuffer = *outbuffer | sb->code.value;
+        *remaining_bits -= sb->code.length;
+    }else{ /*Se não for possível...*/
+        *outbuffer = *outbuffer << *remaining_bits; 
+        /*Número de bits restantes no código (que precisam ser inseridos no próximo byte)*/ 
+        int n_rest = sb->code.length - *remaining_bits; 
+
+        uint64_t code_slice = sb->code.value >> n_rest; /*Extraindo o pedaço do código que cabe no byte atual*/
+        *outbuffer = *outbuffer | code_slice;
+        /*Escrevendo na saída*/
+        fputc(*outbuffer, outfile);
+        *outbuffer = 0; /*Limpando o buffer*/
+        /*Extraindo somente os bits que restaram da inserção anterior*/
+        int mask = pow(2, n_rest) - 1;
+        code_slice = sb->code.value & mask;
+        *outbuffer = *outbuffer | code_slice;
+        *remaining_bits = 8 - n_rest;
+    }
+}
 
 void compress(char* input_filepath, char* output_filepath){
 
@@ -81,26 +102,7 @@ void compress(char* input_filepath, char* output_filepath){
             get_bin_str(sb, code_str);
             printf("Símbolo '%s' encontrado na tabela k=0...\033[0;32mcom código %s\033[0m\n", sb->repr, code_str);
             /*Manda o código do símbolo para a saída*/
-            if(remaining_bits >= sb->code.length){ /*Se for possível inserir o código inteiro no byte atual*/
-                outbuffer = outbuffer << sb->code.length;
-                outbuffer = outbuffer | sb->code.value;
-                remaining_bits -= sb->code.length;
-            }else{ /*Se não for possível...*/
-                outbuffer = outbuffer << remaining_bits; 
-                /*Número de bits restantes no código (que precisam ser inseridos no próximo byte)*/ 
-                int n_rest = sb->code.length - remaining_bits; 
-
-                uint64_t code_slice = sb->code.value >> n_rest; /*Extraindo o pedaço do código que cabe no byte atual*/
-                outbuffer = outbuffer | code_slice;
-                /*Escrevendo na saída*/
-                fputc(outbuffer, outfile);
-                outbuffer = 0; /*Limpando o buffer*/
-                /*Extraindo somente os bits que restaram da inserção anterior*/
-                int mask = pow(2, n_rest) - 1;
-                code_slice = sb->code.value & mask;
-                outbuffer = outbuffer | code_slice;
-                remaining_bits = 8 - n_rest;
-            }
+            write_code_to_file(outfile, sb, &outbuffer, &remaining_bits);
             n_bits += sb->code.length;
             
             /*Reconstruindo a árvore de k=0*/
@@ -130,26 +132,7 @@ void compress(char* input_filepath, char* output_filepath){
                 if(rho != NULL){ /**Se o símbolo 'rho' já existe na tabela k=0 */
                     increment_item(contexts[K0_TABLE].symb_table, TABLE_SIZE, RHO);
                     /*Mandando o código de 'rho' para a saída*/
-                    if(remaining_bits >= rho->code.length){ /*Se for possível inserir o código inteiro no byte atual*/
-                        outbuffer = outbuffer << rho->code.length;
-                        outbuffer = outbuffer | rho->code.value;
-                        remaining_bits -= rho->code.length;
-                    }else{ /*Se não for possível...*/
-                        outbuffer = outbuffer << remaining_bits; 
-                        /*Número de bits restantes no código (que precisam ser inseridos no próximo byte)*/ 
-                        int n_rest = rho->code.length - remaining_bits; 
-        
-                        uint64_t code_slice = rho->code.value >> n_rest; /*Extraindo o pedaço do código que cabe no byte atual*/
-                        outbuffer = outbuffer | code_slice;
-                        /*Escrevendo na saída*/
-                        fputc(outbuffer, outfile);
-                        outbuffer = 0; /*Limpando o buffer*/
-                        /*Extraindo somente os bits que restaram da inserção anterior*/
-                        int mask = pow(2, n_rest) - 1;
-                        code_slice = rho->code.value & mask;
-                        outbuffer = outbuffer | code_slice;
-                        remaining_bits = 8 - n_rest;
-                    }
+                    write_code_to_file(outfile, rho, &outbuffer, &remaining_bits);
                     n_bits+=rho->code.length;
                     get_bin_str(rho, code_str);
                     printf("\t\tMandando código de rho para a saída. \033[0;32mCódigo: %s\033[0m\n", code_str);
@@ -167,26 +150,7 @@ void compress(char* input_filepath, char* output_filepath){
                 if(contexts[EQPROB_TABLE].n_symb > 1){
                     get_bin_str(sb, code_str);
                     printf("\t\tMandando código de %s para a saída. \033[0;32mCódigo: %s\033[0m\n", sb->repr, code_str);
-                    if(remaining_bits >= sb->code.length){ /*Se for possível inserir o código inteiro no byte atual*/
-                        outbuffer = outbuffer << sb->code.length;
-                        outbuffer = outbuffer | sb->code.value;
-                        remaining_bits -= sb->code.length;
-                    }else{ /*Se não for possível...*/
-                        outbuffer = outbuffer << remaining_bits; 
-                        /*Número de bits restantes no código (que precisam ser inseridos no próximo byte)*/ 
-                        int n_rest = sb->code.length - remaining_bits; 
-        
-                        uint64_t code_slice = sb->code.value >> n_rest; /*Extraindo o pedaço do código que cabe no byte atual*/
-                        outbuffer = outbuffer | code_slice;
-                        /*Escrevendo na saída*/
-                        fputc(outbuffer, outfile);
-                        outbuffer = 0; /*Limpando o buffer*/
-                        /*Extraindo somente os bits que restaram da inserção anterior*/
-                        int mask = pow(2, n_rest) - 1;
-                        code_slice = sb->code.value & mask;
-                        outbuffer = outbuffer | code_slice;
-                        remaining_bits = 8 - n_rest;
-                    }
+                    write_code_to_file(outfile, sb, &outbuffer, &remaining_bits);
                     n_bits+= sb->code.length;
                 }else{
                     /*Se não houverem mais símbolos na tabela de equiprobabilidade, então 
