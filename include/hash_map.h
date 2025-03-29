@@ -19,9 +19,9 @@ typedef struct Item{
 
 int     hash(char* key);
 void    add_item(Item* map[], Symbol symb);
-void    remove_item(Item* map[], int size, char* key);
-void    increment_item(Item* map[], int size, char* key);
-void    decrement_item(Item* map[], int size, char* key);
+void    remove_item(Item* map[], char* key);
+void    increment_item(Item* map[], char* key);
+void    decrement_item(Item* map[], char* key);
 Symbol* get_item(Item* map[], char* key);
 void    show_map(Item* map[], int size);
 void    destroy_map(Item* map[], int size);

@@ -23,66 +23,65 @@ void add_item(Item* map[], Symbol symb){
     }
 }
 
-void remove_item(Item* map[], int size, char* key){
-    for(int i = 0; i < size; i++){
-        Item* it = map[i];
-        Item* prev = NULL;
-        while(it != NULL){
-            if(!strcmp(it->value->repr, key)){//Se encontrou o símbolo
+void remove_item(Item* map[], char* key){
+    const int index = hash(key);
+    
+    Item* it = map[index];
+    Item* prev = NULL;
+    while(it != NULL){
+        if(!strcmp(it->value->repr, key)){//Se encontrou o símbolo
+            if(prev != NULL){
+                prev->next = it->next;
+            }else{
+                map[index] = it->next;
+            }
+
+            free(it->value->repr);
+            free(it->value);
+            free(it);
+            break;
+        }
+        prev = it;
+        it = it->next;
+    }
+}
+
+void decrement_item(Item* map[], char* key){
+    const int index = hash(key);
+    
+    Item* it = map[index];
+    Item* prev = NULL;
+    while(it != NULL){
+        if(!strcmp(it->value->repr, key)){//Se encontrou o símbolo
+            it->value->counter--;
+
+            if(!it->value->counter){
                 if(prev != NULL){
                     prev->next = it->next;
                 }else{
-                    map[i] = it->next;
+                    map[index] = it->next;
                 }
-   
+
                 free(it->value->repr);
                 free(it->value);
                 free(it);
-                break;
             }
-            prev = it;
-            it = it->next;
+            break;
         }
+        prev = it;
+        it = it->next;
     }
 }
 
-void decrement_item(Item* map[], int size, char* key){
-    for(int i = 0; i < size; i++){
-        Item* it = map[i];
-        Item* prev = NULL;
-        while(it != NULL){
-            if(!strcmp(it->value->repr, key)){//Se encontrou o símbolo
-                it->value->counter--;
-
-                if(!it->value->counter){
-                    if(prev != NULL){
-                        prev->next = it->next;
-                    }else{
-                        map[i] = it->next;
-                    }
-   
-                    free(it->value->repr);
-                    free(it->value);
-                    free(it);
-                }
-                break;
-            }
-            prev = it;
-            it = it->next;
+void increment_item(Item* map[], char* key){
+    const int index = hash(key);
+    Item* it = map[index];
+    while(it != NULL){
+        if(!strcmp(it->value->repr, key)){//Se encontrou o símbolo
+            it->value->counter++;
+            break;
         }
-    }
-}
-
-void increment_item(Item* map[], int size, char* key){
-    for(int i = 0; i < size; i++){
-        Item* it = map[i];
-        while(it != NULL){
-            if(!strcmp(it->value->repr, key)){//Se encontrou o símbolo
-                it->value->counter++;
-                break;
-            }
-            it = it->next;
-        }
+        it = it->next;
     }
 }
 
