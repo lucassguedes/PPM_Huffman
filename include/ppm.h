@@ -6,17 +6,16 @@
 #include "utils.h"
 
 #define TABLE_SIZE 50000
+#define EMPTY_CONTEXT "---"
 
 #define RHO "`"
 
 enum{
-    EQPROB_TABLE,
-    K0_TABLE,
-    K1_TABLE,
-    K2_TABLE,
-    K3_TABLE,
-    K4_TABLE,
-    K5_TABLE,
+    K1,
+    K2,
+    K3,
+    K4,
+    K5,
 };
 
 /*a-z + space*/

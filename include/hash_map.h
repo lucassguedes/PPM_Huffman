@@ -27,10 +27,12 @@ void    show_map(Item* map[], int size);
 void    destroy_map(Item* map[], int size);
 
 typedef struct ContextInfo{
+    char* name; // Nome do contexto, para K > 0. Usada para tratar colisões na tabela hash
     int n_symb;
     int max_search_length; /*Comprimento máximo de bits a buscar antes de passar para a próxima tabela*/
     Item** symb_table;
     HuffmanTree* tree;
+    struct ContextInfo* next; /*Usado para encadear vários contextos em uma mesma posição, em caso de colisão na tabela hash*/
 }ContextInfo;
 
 /*Dada uma  lista  de  símbolos  "symbols" e uma árvore
