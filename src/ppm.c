@@ -34,7 +34,7 @@ void initialize_equiprob_table(ContextInfo *ctx)
     Symbol **all_symbols = extract_symbols(ctx, TABLE_SIZE);
     ctx->tree = create_tree(all_symbols, 27);
     /*Atualiza os códigos dos símbolos de acordo com a estrutura da árvore*/
-    set_codes(ctx, all_symbols, 27);
+    set_codes(ctx);
 
     // printf("K=-1 - Symbols:\n");
     // char code_str[30];
@@ -98,12 +98,6 @@ void write_code_to_file(FILE *outfile, Symbol *sb, uint8_t *outbuffer, int *outb
         *outbuffer = 0;
         *outbuffer_length = 8;
     }
-
-    
-
-        
-    
-
 }
 
 void rebuild_tree(ContextInfo* ctx){
@@ -114,7 +108,7 @@ void rebuild_tree(ContextInfo* ctx){
         destroy_tree(ctx->tree);
         extracted_symbols = extract_symbols(ctx, TABLE_SIZE);
         ctx->tree = create_tree(extracted_symbols, ctx->n_symb);
-        set_codes(ctx, extracted_symbols, ctx->n_symb);
+        set_codes(ctx);
 
         // char code_str[30];
         // printf("<<< all symbols >>>\n");
@@ -359,7 +353,6 @@ void decompress(char *input_filepath, char *output_filepath)
     int explored = 0;
 
     printf("Size of file: %d\n", file_size);
-    getchar();
 
     Code *code = (Code *)malloc(sizeof(Code));
     int bits_to_read = 8;
@@ -376,7 +369,7 @@ void decompress(char *input_filepath, char *output_filepath)
 
         byte = fgetc(file);
 
-        printf("Lendo byte: %d\n", byte);
+        // printf("Lendo byte: %d\n", byte);
         bits_to_read = 8;
 
         while(bits_to_read){
@@ -384,24 +377,14 @@ void decompress(char *input_filepath, char *output_filepath)
                 break;
             }
 
-            printf("explored: %d/%d\n", explored, file_size);
+            // printf("explored: %d/%d\n", explored, file_size);
             code->value = code->value << 1;
             code->value |= (byte & (int)pow(2, bits_to_read) - 1) >> (bits_to_read - 1);
             code->length++;
             bits_to_read--;
 
-            char code_str[30];
-
-            Symbol xs;
-            xs.code = *code;
-            get_bin_str(&xs, code_str);
-
-            printf("Code: %s, max_search_length(k=0): %d, max_search_length(k=-1): %d\n", code_str, contexts[K0_TABLE].max_search_length, contexts[EQPROB_TABLE].max_search_length);
-            printf("skip_k0 = %d\n", skip_k0);
-
-            if(code->length > 10){
-                getchar();
-            }
+            // printf("Code: %s, max_search_length(k=0): %d, max_search_length(k=-1): %d\n", code_str, contexts[K0_TABLE].max_search_length, contexts[EQPROB_TABLE].max_search_length);
+            // printf("skip_k0 = %d\n", skip_k0);
 
             // printf("\033[0;35mNUMERO DE SÍMBOLOS EM K=-1: %d\033[0m\n", contexts[EQPROB_TABLE].n_symb);
 

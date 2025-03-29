@@ -36,7 +36,7 @@ typedef struct ContextInfo{
 /*Dada uma  lista  de  símbolos  "symbols" e uma árvore
   de Huffman "tree", atribui os códigos correspondentes
   a cada símbolo de acordo com a estrutura da árvore.*/
-void set_codes(ContextInfo* ctx, Symbol** symbols, int n);
+void set_codes(ContextInfo* ctx);
 
 Symbol** extract_symbols(ContextInfo* ctx_info, int table_size);
 

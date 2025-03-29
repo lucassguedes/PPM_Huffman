@@ -176,45 +176,35 @@ int compare_symbols(const void * a, const void * b){
 	return counter_cmp;
 }
 
-void set_codes(ContextInfo* ctx, Symbol** symbols, int n){
-    /*Consideramos  que os símbolos das folhas da árvore
-      estão na mesma ordem dos símbolos em symbols, isto
-      é, em ordem crescente de seus contadores.
-    */
-    // printf("\033[0;31mset-codes...\033[0m\n");
 
-    HuffmanTree* tree = ctx->tree;
-
-    qsort(symbols, n, sizeof(Symbol*), compare_symbols);
-
+void set_codes(ContextInfo* ctx){
     ctx->max_search_length = 0;
 
-    for(int i = 0; i < n; i++){
-        /*Encontra o código correspondente*/
-        Node* node = tree->leafs[i];
+    const int n_leafs = ctx->n_symb;
 
-        symbols[i]->code.value = 0;
-        symbols[i]->code.length = 0;
-        // printf("Símbolo \"%s\"...", node->symbol.repr);
-        while(node != NULL){
-            if(node->parent != NULL){
+    for(int i = 0; i < n_leafs; i++){
+        Symbol* symbol = get_item(ctx->symb_table, ctx->tree->leafs[i]->symbol.repr);
+        Node* leaf = ctx->tree->leafs[i];
+
+        symbol->code.value = 0;
+        symbol->code.length = 0;
+
+        while(leaf != NULL){
+            if(leaf->parent != NULL){
                 // symbols[i]->code.value = symbols[i]->code.value << 1;
-                if(is_left_child(node)){
+                if(is_left_child(leaf)){
                     // printf("1");
-                    symbols[i]->code.value |= (int)pow(2, symbols[i]->code.length);
+                    symbol->code.value |= (int)pow(2, symbol->code.length);
                 }else{
                     // printf("0");
                 }
-                symbols[i]->code.length++;
+                symbol->code.length++;
             }
-            node = node->parent;
+            leaf = leaf->parent;
         }
-        if(symbols[i]->code.length > ctx->max_search_length){
-            ctx->max_search_length = symbols[i]->code.length;
+        if(symbol->code.length > ctx->max_search_length){
+            ctx->max_search_length = symbol->code.length;
         }
-        // printf(", Length: %d", symbols[i]->code.length);
-        // printf("\n");
     }
-    // printf("\033[0;31mend set-codes...\033[0m\n");
 
 }
