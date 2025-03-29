@@ -8,10 +8,6 @@
 
 char utf8_ascii_table[256][256];
 
-
-
-
-
 int main(int argc, char** argv){
 
 	
@@ -20,9 +16,14 @@ int main(int argc, char** argv){
 		return -1;
 	}
 	
-	// initialize_convertion_table(utf8_ascii_table);
-	
-	// format_file(argv[1], argv[2], utf8_ascii_table);
+
+	if(!strcmp(argv[3], "--format")){
+		printf("Formatting...\n");
+		initialize_convertion_table(utf8_ascii_table);
+		format_file(argv[1], argv[2], utf8_ascii_table);
+		return 0;
+	}
+
 
 	if(!strcmp(argv[3], "--compress")){
 		compress(argv[1], argv[2]);

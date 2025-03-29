@@ -59,36 +59,50 @@ void initialize_ppm_table(ContextInfo *ctx)
 
 void write_code_to_file(FILE *outfile, Symbol *sb, uint8_t *outbuffer, int *outbuffer_length)
 {
-    if (*outbuffer_length >= sb->code.length)
-    { /*Se for possível inserir o código inteiro no byte atual*/
-        *outbuffer = *outbuffer << sb->code.length;
-        *outbuffer = *outbuffer | sb->code.value;
-        *outbuffer_length -= sb->code.length;
+    
 
-        if(*outbuffer_length == 0){
-            fputc(*outbuffer, outfile);
-            *outbuffer = 0;
-            *outbuffer_length = 8;
-        }
-    }
-    else
-    { /*Se não for possível...*/
-        *outbuffer = *outbuffer << *outbuffer_length;
-        /*Número de bits restantes no código (que precisam ser inseridos no próximo byte)*/
-        int n_rest = sb->code.length - *outbuffer_length;
-        uint64_t code_slice = sb->code.value >> n_rest; /*Extraindo o pedaço do código que cabe no byte atual*/
+    int bits_to_write = sb->code.length;
+    uint64_t code = sb->code.value;
+
+    int bits_to_ignore;
+    while(bits_to_write > *outbuffer_length){
+        bits_to_ignore = bits_to_write - *outbuffer_length; //bits_to_ignore -> número de bits que serão deixados para o próximo byte
+
+        printf("\033[0;31mPrecisamos de %d bits, mas só temos %d bits...\n", bits_to_write, *outbuffer_length);
+        
+        *outbuffer = *outbuffer << *outbuffer_length; /*Liberando espaço para inserir um pedaço do código*/
+        
+        uint64_t code_slice = code >> bits_to_ignore; /*Extraindo o pedaço do código que cabe no byte atual*/
         *outbuffer = *outbuffer | code_slice;
-        /*Escrevendo na saída*/
-        fputc(*outbuffer, outfile);
-        *outbuffer = 0; /*Limpando o buffer*/
-        /*Extraindo somente os bits que restaram da inserção anterior*/
-        int mask = pow(2, n_rest) - 1;
-        code_slice = sb->code.value & mask;
-        *outbuffer = *outbuffer | code_slice;
-        *outbuffer_length = 8 - n_rest;
+        
+        printf("\t\033[0;31mNeste byte, vamos colocar apenas %d bits mais significativos do código, que terá valor %d\033[0m\n",*outbuffer_length, code_slice);
+
+        code = code & ((int)pow(2, bits_to_ignore) - 1); /*Removendo a parte do código que está para ser escrita*/
+        bits_to_write -= *outbuffer_length; 
 
         
+        /*Escrevendo na saída*/        
+        fputc(*outbuffer, outfile);
+        *outbuffer = 0; /*Limpando o buffer*/
+        *outbuffer_length = 8;
+        printf("\t\033[0;31mAgora restam %d bits, e o código restante é %d\033[0m\n",bits_to_write, code);
     }
+
+    printf("\033[0;32mFinalmente temos espaço o suficiente! Escreveremos %d bits restantes, com valor %d\033[0m\n",bits_to_write,code);
+    *outbuffer = *outbuffer << bits_to_write;
+    *outbuffer = *outbuffer | code;
+    *outbuffer_length -= bits_to_write;
+
+    if(*outbuffer_length == 0){
+        fputc(*outbuffer, outfile);
+        *outbuffer = 0;
+        *outbuffer_length = 8;
+    }
+
+    
+
+        
+    
 
 }
 
@@ -150,13 +164,14 @@ void compress(char *input_filepath, char *output_filepath)
     // Calculando o tamanho do arquivo (em bytes)
     uint32_t file_size = ftell(file);
     printf("Size of file: %d\n", file_size);
+    getchar();
 
     /*Os primeiros 4 bytes do arquivo comprimido indicam a quantidade de bytes do arquivo original*/
-    uint8_t file_length_portion = file_size & (255 << 24);
+    uint8_t file_length_portion = (file_size & (255 << 24)) >> 24;
     fputc(file_length_portion, outfile);
-    file_length_portion = file_size & (255 << 16);
+    file_length_portion = (file_size & (255 << 16)) >> 16;
     fputc(file_length_portion, outfile);
-    file_length_portion = file_size & (255 << 8);
+    file_length_portion = (file_size & (255 << 8)) >> 8;
     fputc(file_length_portion, outfile);
     file_length_portion = file_size & 255;
     fputc(file_length_portion, outfile);
@@ -167,6 +182,8 @@ void compress(char *input_filepath, char *output_filepath)
 
     uint8_t outbuffer = 0;  /*Byte a ser mandado para a saída.*/
     int outbuffer_length = 8; /*Número restante de bits livres em outbuffer*/
+    char word[30];
+    sprintf(word, "");
 
     while ((c = fgetc(file)) != EOF)
     {
@@ -178,8 +195,20 @@ void compress(char *input_filepath, char *output_filepath)
             increment_item(contexts[K0_TABLE].symb_table, TABLE_SIZE, buffer);
 
             get_bin_str(sb, code_str);
-            show_tree(contexts[K0_TABLE].tree->root, 1);
+            // show_tree(contexts[K0_TABLE].tree->root, 1);
             printf("Símbolo '%s' encontrado na tabela k=0...\033[0;32mcom código %s\033[0m\n", sb->repr, code_str);
+
+            if(!strcmp(sb->repr, " ")){
+                printf("\033[0;31mPalavra: %s\033[0m\n", word);
+                if(!strcmp(word, "juvenil")){
+                    getchar();
+                }
+                sprintf(word, "");
+
+            }else{
+                strcat(word, sb->repr);
+            }
+
             /*Manda o código do símbolo para a saída*/
             write_code_to_file(outfile, sb, &outbuffer, &outbuffer_length);
             n_bits += sb->code.length;
@@ -206,7 +235,7 @@ void compress(char *input_filepath, char *output_filepath)
                     n_bits += rho->code.length;
                     get_bin_str(rho, code_str);
                     printf("Árvore k=0\n");
-                    show_tree(contexts[K0_TABLE].tree->root, 1);
+                    // show_tree(contexts[K0_TABLE].tree->root, 1);
                     printf("\t\tMandando código de rho (%s) para a saída. \033[0;32mCódigo: %s, length: %d\033[0m\n", rho->repr, code_str, rho->code.length);
                 }
                 else
@@ -220,6 +249,15 @@ void compress(char *input_filepath, char *output_filepath)
                 {
                     get_bin_str(sb, code_str);
                     printf("\t\tMandando código de %s para a saída. \033[0;32mCódigo: %s\033[0m\n", sb->repr, code_str);
+                    if(!strcmp(sb->repr, " ")){
+                        printf("\033[0;31mPalavra: %s\033[0m\n", word);
+                        sprintf(word, "");
+                        if(!strcmp(word, "juvenil")){
+                            getchar();
+                        }
+                    }else{
+                        strcat(word, sb->repr);
+                    }
                     write_code_to_file(outfile, sb, &outbuffer, &outbuffer_length);
                     n_bits += sb->code.length;
                 }
@@ -243,7 +281,7 @@ void compress(char *input_filepath, char *output_filepath)
                 
                 // Reconstruir árvore k = 0 
                 rebuild_tree(&contexts[K0_TABLE]);
-                show_tree(contexts[K0_TABLE].tree->root, 1);
+                // show_tree(contexts[K0_TABLE].tree->root, 1);
 
                 
 
@@ -306,39 +344,47 @@ void decompress(char *input_filepath, char *output_filepath)
     uint32_t file_size = 0;
 
     byte = fgetc(file);
-    file_size = byte & (255 << 24);
+    file_size += byte << 24;
     byte = fgetc(file);
-    file_size = byte & (255 << 16);
+    file_size += byte << 16;
     byte = fgetc(file);
-    file_size = byte & (255 << 8);
+    file_size += byte << 8;
     byte = fgetc(file);
-    file_size = byte & 255;
+    file_size += byte;
 
     int explored = 0;
 
-    // printf("Size of file: %d\n", file_size);
+    printf("Size of file: %d\n", file_size);
+    getchar();
 
     Code *code = (Code *)malloc(sizeof(Code));
-    int outbuffer_length = 8;
+    int bits_to_read = 8;
     code->value = 0;
     code->length = 0;
     Symbol *found_symbol = NULL;
 
     bool skip_k0 = false;
+    char word[30];
+
+    sprintf(word, "");
     while (explored < file_size)
     {
 
         byte = fgetc(file);
 
         printf("Lendo byte: %d\n", byte);
-        outbuffer_length = 8;
+        bits_to_read = 8;
 
-        while(outbuffer_length){
+        while(bits_to_read){
+            if(explored == file_size){
+                break;
+            }
+
             printf("explored: %d/%d\n", explored, file_size);
             code->value = code->value << 1;
-            code->value |= (byte & (int)pow(2, outbuffer_length) - 1) >> (outbuffer_length - 1);
+            code->value |= (byte & (int)pow(2, bits_to_read) - 1) >> (bits_to_read - 1);
             code->length++;
-            outbuffer_length--;
+            bits_to_read--;
 
             char code_str[30];
 
@@ -347,26 +393,83 @@ void decompress(char *input_filepath, char *output_filepath)
             get_bin_str(&xs, code_str);
 
             printf("Code: %s, max_search_length(k=0): %d, max_search_length(k=-1): %d\n", code_str, contexts[K0_TABLE].max_search_length, contexts[EQPROB_TABLE].max_search_length);
-
             printf("skip_k0 = %d\n", skip_k0);
 
-            if(!skip_k0 && (found_symbol = search_code(contexts[K0_TABLE].symb_table, code)) != NULL){
-                if(!strcmp(found_symbol->repr, RHO)){
-                    code->length = code->value = 0;
-                    skip_k0 = true;
-                    printf("\033[0;35mEncontrou um rho!\033[0m\n");
-                    getchar();
-                }else{
-                    printf("Mandando \033[0;31m\"%s\"\033[0m\n", found_symbol->repr);
-                    fprintf(outfile, "%s", found_symbol->repr);
-                    increment_item(contexts[K0_TABLE].symb_table, TABLE_SIZE, found_symbol->repr);
-                    code->length = code->value = 0;
-                    explored++;
-                    getchar();
+            if(code->length > 10){
+                getchar();
+            }
+
+            printf("\033[0;35mNUMERO DE SÍMBOLOS EM K=-1: %d\033[0m\n", contexts[EQPROB_TABLE].n_symb);
+
+
+            if(!skip_k0){
+                if((found_symbol = search_code(contexts[K0_TABLE].symb_table, code)) != NULL){
+                    if(!strcmp(found_symbol->repr, RHO)){
+                        code->length = code->value = 0;
+                        skip_k0 = true;
+                        printf("\033[0;35mEncontrou um rho! N(k=0) = %d\033[0m\n", contexts[EQPROB_TABLE].n_symb);
+
+                        if(contexts[EQPROB_TABLE].n_symb == 1){
+                            explored++;
+                            printf("\033[0;31m<<<<<<<<<<<<<<<<<<<<<<<< É O ÚLTIMO SÍMBOLO EM K = -1 >>>>>>>>>>>>>>>>>>>>>>>>>>>>\033[0m\n");
+                            Symbol** extracted_symbols = extract_symbols(&contexts[EQPROB_TABLE], TABLE_SIZE);
+                            printf("Último símbolo: %s", extracted_symbols[0]->repr);
+                            
+                            fprintf(outfile, "%s", extracted_symbols[0]->repr);
+
+                            if(!strcmp(extracted_symbols[0]->repr, " ")){
+                                printf("\033[0;31mPalavra: %s\033[0m\n", word);
+                                getchar();
+                                sprintf(word, "");
+                            }else{
+                                strcat(word, extracted_symbols[0]->repr);
+                            }
+
+                            add_to_context(&contexts[K0_TABLE], extracted_symbols[0]->repr);
+
+                            remove_item(contexts[EQPROB_TABLE].symb_table, TABLE_SIZE, extracted_symbols[0]->repr);
+                            contexts[EQPROB_TABLE].n_symb--;
+
+                            remove_item(contexts[K0_TABLE].symb_table, TABLE_SIZE, RHO);
+                            contexts[K0_TABLE].n_symb--;
+                            rebuild_tree(&contexts[EQPROB_TABLE]);
+                            rebuild_tree(&contexts[K0_TABLE]);
+                            skip_k0 = false;
+                        }
+                    }else{
+                        printf("Mandando \033[0;31m\"%s\"\033[0m\n", found_symbol->repr);
+                        fprintf(outfile, "%s", found_symbol->repr);
+                        increment_item(contexts[K0_TABLE].symb_table, TABLE_SIZE, found_symbol->repr);
+                        rebuild_tree(&contexts[K0_TABLE]);
+                        code->length = code->value = 0;
+
+                        if(!strcmp(found_symbol->repr, " ")){
+                            printf("\033[0;31mPalavra: %s\033[0m\n", word);
+                            getchar();
+                            sprintf(word, "");
+                        }else{
+                            strcat(word, found_symbol->repr);
+                        }
+
+                        explored++;
+                    }
+                    continue;
+                }else if(code->length < contexts[K0_TABLE].max_search_length){
+                    continue;
                 }
-            }else if(code->length >= contexts[K0_TABLE].max_search_length && (found_symbol = search_code(contexts[EQPROB_TABLE].symb_table, code)) != NULL){
+            }
+
+            
+            if((found_symbol = search_code(contexts[EQPROB_TABLE].symb_table, code)) != NULL){
                 explored++;
                 printf("Mandando \033[0;32m\"%s\"\033[0m\n", found_symbol->repr);
+                if(!strcmp(found_symbol->repr, " ")){
+                    printf("\033[0;31mPalavra: %s\033[0m\n", word);
+                    sprintf(word, "");
+                    getchar();
+                }else{
+                    strcat(word, found_symbol->repr);
+                }
                 fprintf(outfile, "%s", found_symbol->repr);
                 add_to_context(&contexts[K0_TABLE], found_symbol->repr);
 
@@ -377,17 +480,13 @@ void decompress(char *input_filepath, char *output_filepath)
                 }
                 remove_item(contexts[EQPROB_TABLE].symb_table, TABLE_SIZE, found_symbol->repr);
                 contexts[EQPROB_TABLE].n_symb--;
+
                 skip_k0 = false;
                 code->value = code->length = 0;
-                getchar();
             }
 
             rebuild_tree(&contexts[EQPROB_TABLE]);
             rebuild_tree(&contexts[K0_TABLE]);
-
-            if(explored == file_size){
-                break;
-            }
 
         }
     }

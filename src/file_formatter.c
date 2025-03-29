@@ -1,7 +1,12 @@
 #include "file_formatter.h"
 
 bool is_forbidden(char c){
-    if(c == '\n' || c == '-' || c == '.' || c == ',' || c == ':' || c == '*' || c == '?' || c == '!' || c == ';'){
+
+    if(c == 0x20){ //space
+        return false;
+    }
+
+    if((c >= 0x21 && c <= 0x40) || (c >= 0x5B && c <= 0x60)){
         return true;
     }
     return false;
@@ -18,15 +23,21 @@ bool format_file(const char* input_filepath, const char* output_filepath, char u
 
     char character;
 
-
+    char last_char = '\0';
     while((character = fgetc(file)) != EOF){
         if(character == 0xD){
             fgetc(file);
             fprintf(outfile, " ");
-        }else if(is_forbidden(character) || character == 0xD){
+        }else if(is_forbidden(character) || character == 0xD || (character & 0xFF) == 0xC2){
             fprintf(outfile, "");            
         }else if((character & 0x80) == 0){
+            if(character == ' '){
+                if(last_char == ' '){
+                    continue;
+                }
+            }
             fprintf(outfile, "%c", tolower(character));
+            last_char = character;
         }else if((character & 0xE0) == 0xE0){
             fgetc(file); fgetc(file);
         }else if((character & 0xc0) == 0xc0){
