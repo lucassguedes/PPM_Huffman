@@ -628,6 +628,7 @@ void decompress(char *input_filepath, char *output_filepath)
                             rebuild_tree(&eqprob_info);
                             rebuild_tree(&k0_info);
                             skip_k0 = false;
+                            skip_k1 = false;
                         }
                     }else{
                         skip_k1 = false;
