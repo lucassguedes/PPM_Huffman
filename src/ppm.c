@@ -217,7 +217,7 @@ ContextInfo *create_context(ContextInfo **contexts, char *key)
  * final, indica se o loop se devemos efetuar um continue (true),
  * ou dar prosseguimento à busca nos próximos contextos.
  */
-bool contextual_search_symbol(ContextInfo **contexts,
+bool contextual_search_symbol(ContextInfo **contexts, int n_contexts[],
                               int K, uint8_t *outbuffer, int *outbuffer_length,
                               char *context_str, FILE *outfile,
                               char *buffer, int *explored)
@@ -234,12 +234,45 @@ bool contextual_search_symbol(ContextInfo **contexts,
 
     if (ctx == NULL) // Se o contexto não existe
     {
+
+        if(n_contexts[K] > 4096){
+            printf("\033[0;31mOpaa!!Muitos contextos criados!! Mais de 4096!\033[0m\n");
+            
+            /*Limpando o contexto*/
+            int deleted = 0;
+            for(int i = 0; i < TABLE_SIZE; i++){
+                ContextInfo* current_ctx = contexts[i];
+                contexts[i] = NULL;
+                while(current_ctx != NULL){
+                    ContextInfo * next = current_ctx->next;
+
+                    destroy_tree(current_ctx->tree);
+                    destroy_map(current_ctx->symb_table, TABLE_SIZE);
+                    free(current_ctx);
+                    current_ctx = next; 
+                    // deleted++;
+                }
+
+                // if(deleted > 1000){
+                //     break;
+                // }
+            }
+
+            // n_contexts[K] -= deleted;
+            n_contexts[K] = 0;
+
+            if(n_contexts[K] < 0){
+                printf("Algo muito estranho...\n");
+                exit(-1);
+            }
+        }
         /*Crie o contexto e adicione o novo símbolo*/
         ctx = create_context(contexts, context_str);
         add_to_context(ctx, buffer);
         add_to_context(ctx, RHO);
         rebuild_tree(ctx);
         update_context_str(context_str, K + 1, buffer);               // Atualizamos a string de contexto
+        n_contexts[K]++;
         return false; // Deve continuar a busca nos contextos seguintes
     }
 
@@ -289,13 +322,17 @@ void compress(char *input_filepath, char *output_filepath)
      * seus respectivos códigos.
      */
 
-    const int K = 4;
+    const int K = 5;
 
     ContextInfo ***contextual_tables;
+
+    int n_contexts[K]; // Número de contextos criados em cada K
+
 
     contextual_tables = (ContextInfo***)malloc(sizeof(ContextInfo**)*K);
 
     for(int k = 0; k < K; k++){
+        n_contexts[k] = 0;
         contextual_tables[k] = (ContextInfo**)malloc(sizeof(ContextInfo*)*TABLE_SIZE);
         for (int i = 0; i < TABLE_SIZE; i++)
         {   
@@ -367,7 +404,7 @@ void compress(char *input_filepath, char *output_filepath)
         /*Pesquisando nos contextos K a K1*/
         bool must_continue = false;
         for(int k = K-1; k >= K1; k--){
-            if (contextual_search_symbol(contextual_tables[k], k, &outbuffer, &outbuffer_length, context_str[k], outfile, buffer, &explored))
+            if (contextual_search_symbol(contextual_tables[k], n_contexts, k, &outbuffer, &outbuffer_length, context_str[k], outfile, buffer, &explored))
             {
                 must_continue = true;
                 break;
@@ -486,7 +523,7 @@ Symbol *search_code(Item *map[], Code *code)
     return NULL;
 }
 
-bool contextual_search_code(FILE* outfile, ContextInfo** contexts, Code* code, Symbol** found_symbol,
+bool contextual_search_code(FILE* outfile, ContextInfo** contexts, int n_contexts[], Code* code, Symbol** found_symbol,
                             bool* skip, char* context_str, int K, int* explored){
     
 
@@ -502,6 +539,39 @@ bool contextual_search_code(FILE* outfile, ContextInfo** contexts, Code* code, S
     if(ctx == NULL){
         printf("\033[0;31mO contexto \"%s\" não existe!\033[0m\n", context_str);
         /*Se o contexto não existe ainda, crie*/
+        
+        if(n_contexts[K] > 4096){
+            printf("\033[0;31mOpaa!!Muitos contextos criados!! Mais de 4096!\033[0m\n");
+            
+            /*Limpando o contexto*/
+            int deleted = 0;
+            for(int i = 0; i < TABLE_SIZE; i++){
+                ContextInfo* current_ctx = contexts[i];
+                contexts[i] = NULL;
+                while(current_ctx != NULL){
+                    ContextInfo * next = current_ctx->next;
+
+                    destroy_tree(current_ctx->tree);
+                    destroy_map(current_ctx->symb_table, TABLE_SIZE);
+                    free(current_ctx);
+                    current_ctx = next; 
+                    // deleted++;
+                }
+
+                // if(deleted > 1000){
+                //     break;
+                // }
+            }
+
+            // n_contexts[K] -= deleted;
+            n_contexts[K] = 0;
+
+            if(n_contexts[K] < 0){
+                printf("Algo muito estranho...\n");
+                exit(-1);
+            }
+        }
+        n_contexts[K]++;
         ctx = create_context(contexts, context_str);
         rebuild_tree(ctx);
         return false;
@@ -588,7 +658,10 @@ void decompress(char *input_filepath, char *output_filepath)
 
     
     
-    const int K = 4;
+    const int K = 5;
+
+    int n_contexts[K]; // Número de contextos criados em cada K
+
     
     ContextInfo ***contextual_tables = NULL;
     
@@ -596,6 +669,7 @@ void decompress(char *input_filepath, char *output_filepath)
 
 
     for(int i = 0; i < K; i++){
+        n_contexts[i] = 0;
         contextual_tables[i] = (ContextInfo**)malloc(sizeof(ContextInfo*)*TABLE_SIZE);
         for (int j = 0; j < TABLE_SIZE; j++){
             contextual_tables[i][j] = NULL;
@@ -683,7 +757,7 @@ void decompress(char *input_filepath, char *output_filepath)
             for(int k = K - 1; k >= K2; k--){
                 skip[k] = (skip[k-1]) ? skip[k-1] : skip[k]; 
 
-                must_continue = contextual_search_code(outfile, contextual_tables[k], code, &found_symbol, &skip[k], context_str[k], k, &explored);
+                must_continue = contextual_search_code(outfile, contextual_tables[k], n_contexts, code, &found_symbol, &skip[k], context_str[k], k, &explored);
 
                 if(must_continue){
                     for(int j = k + 1; j < K; j++){
@@ -706,7 +780,7 @@ void decompress(char *input_filepath, char *output_filepath)
 
 
             // K = 1
-            must_continue = contextual_search_code(outfile, contextual_tables[K1], code, &found_symbol, &skip[K1], context_str[K1], K1, &explored);
+            must_continue = contextual_search_code(outfile, contextual_tables[K1], n_contexts, code, &found_symbol, &skip[K1], context_str[K1], K1, &explored);
 
             if(must_continue){
                 for(int j = K2; j < K; j++){
