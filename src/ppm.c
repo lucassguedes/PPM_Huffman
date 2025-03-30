@@ -270,40 +270,51 @@ void compress(char *input_filepath, char *output_filepath)
     ContextInfo* ctx;
     while ((c = fgetc(file)) != EOF)
     {
-        // printf("Progress: %0.2f%%\n", (explored / (double)file_size) * 100);
+        printf("########################################################\n");
         sprintf(buffer, "%c", c);
-
+        
         printf("Símbolo atual: \033[0;31m\"%s\"\033[0m\n", buffer);
-
+        printf("Explored: %d / %d\n", explored , file_size);
+        
         // update_context_str(context_str[K2], K2+1, buffer);
         // update_context_str(context_str[K3], K3+1, buffer);
         // update_context_str(context_str[K4], K4+1, buffer);
-        // update_context_str(context_str[K5], K5+1, buffer);
-
-
+        // update_context_str(context_str[K5], K5+1, buffer)
         //K = 1
-        ctx = get_context(k1_table, context_str[K1]);
+        if(strcmp(context_str[K1], EMPTY_CONTEXT)){ // SE a string de contexto não estiver vazia
+            ctx = get_context(k1_table, context_str[K1]);
 
-        if(ctx != NULL){
-            sb = get_item(ctx->symb_table, buffer);
-
-            if(sb != NULL) // Encontrou o símbolo dentro do contexto atual!
-            {
-                printf("Encontrou o símbolo \033[0;32m\"%s\"\033[0m no contexto \033[0;32m\"%s\"\033[0m\n", buffer, context_str[K1]);
-                increment_item(ctx->symb_table, buffer);
-                write_code_to_file(outfile, sb, &outbuffer, &outbuffer_length);
-                update_context_str(context_str[K1], K1+1, buffer);
+            if(ctx != NULL){ /*O contexto existe*/
+                printf("O contexto \"%s\" já existe!\n", context_str[K1]);
+                sb = get_item(ctx->symb_table, buffer); /*Verificando se o símbolo atual está neste contexto*/
+                
+                if(sb != NULL) // Encontrou o símbolo dentro do contexto atual!
+                {
+                    printf("Encontrou o símbolo \033[0;32m\"%s\"\033[0m no contexto \033[0;32m\"%s\"\033[0m - Código: ", buffer, context_str[K1]);
+                    get_bin_str(sb, code_str);
+                    printf("%s\n", code_str);
+                    increment_item(ctx->symb_table, buffer); // Incrementando o contador do símbolo
+                    write_code_to_file(outfile, sb, &outbuffer, &outbuffer_length); // Escrevemos o código no arquivo
+                    update_context_str(context_str[K1], K1+1, buffer); //Atualizamos a string de contexto
+                    rebuild_tree(ctx);
+                    explored++;
+                    continue;
+                }
+                /*Caso não tenha encontrado o código neste contexto*/
+                Symbol* rho = get_item(ctx->symb_table, RHO); // Obtém o 'rho'
+                get_bin_str(rho, code_str);
+                printf("Codificando 'rho' para k = 1 - Código: %s\n", code_str);
+                write_code_to_file(outfile, rho, &outbuffer, &outbuffer_length); // Escrevemos o código de 'rho' na saída
+                increment_item(ctx->symb_table, RHO); // Incrementa o contador de 'rho'
+                add_to_context(ctx, buffer); // Adiciona o novo símbolo ao contexto
                 rebuild_tree(ctx);
-                continue;
+                
+            }else{
+                ctx = create_context(k1_table, context_str[K1]);
+                add_to_context(ctx, buffer);
+                add_to_context(ctx, RHO);
+                rebuild_tree(ctx);
             }
-            // Se não encontrou o símbolo na contexto, incrementa o 'rho'
-            increment_item(ctx->symb_table, RHO);
-            add_to_context(ctx, buffer);
-        }else{
-            ctx = create_context(k1_table, context_str[K1]);
-            add_to_context(ctx, buffer);
-            add_to_context(ctx, RHO);
-            rebuild_tree(ctx);
         }
 
         update_context_str(context_str[K1], K1+1, buffer);
@@ -312,25 +323,12 @@ void compress(char *input_filepath, char *output_filepath)
         // K = 0
         sb = get_item(k0_info.symb_table, buffer);
         if (sb != NULL)
-        { /** Se o símbolo atual FOI encontrado na tabela k=0 */
+        {   
+            /** Se o símbolo atual FOI encontrado na tabela k=0 */
             /*Icrementa o contador do símbolo*/
             increment_item(k0_info.symb_table, buffer);
-
-            // get_bin_str(sb, code_str);
-            // show_tree(k0_info.tree->root, 1);
-            // printf("Símbolo '%s' encontrado na tabela k=0...\033[0;32mcom código %s\033[0m\n", sb->repr, code_str);
-
-            // if(!strcmp(sb->repr, " ")){
-            //     printf("\033[0;31mPalavra: %s\033[0m\n", word);
-            //     if(!strcmp(word, "juvenil")){
-            //         getchar();
-            //     }
-            //     sprintf(word, "");
-
-            // }else{
-            //     strcat(word, sb->repr);
-            // }
-
+            get_bin_str(sb, code_str);
+            printf("Símbolo '%s' encontrado na tabela k=0...\033[0;32mcom código %s\033[0m\n", sb->repr, code_str);
             /*Manda o código do símbolo para a saída*/
             write_code_to_file(outfile, sb, &outbuffer, &outbuffer_length);
             n_bits += sb->code.length;
@@ -342,11 +340,10 @@ void compress(char *input_filepath, char *output_filepath)
         
 
         // k = -1
-        sb = get_item(eqprob_info.symb_table, buffer);
-        if (sb != NULL)
+        sb = get_item(eqprob_info.symb_table, buffer); //Procurando símbolo na tabela k = -1
+        if (sb != NULL) // Se o símbolo estiver na tabela k = -1
         {
             explored++;
-            // printf("Símbolo %s encontrado na tabela k=-1 (N = %d)\n", buffer, eqprob_info.n_symb);
 
             /*Adicionando o símbolo na tabela k=0 */
             add_to_context(&k0_info, buffer);
@@ -356,33 +353,22 @@ void compress(char *input_filepath, char *output_filepath)
             { /**Se o símbolo 'rho' já existe na tabela k=0 */
                 /*Mandando o código de 'rho' para a saída*/
                 increment_item(k0_info.symb_table, RHO);
+                get_bin_str(rho, code_str);
+                printf("Codificando um 'rho' de K=0 na saída - Código: %s\n", code_str);
                 write_code_to_file(outfile, rho, &outbuffer, &outbuffer_length);
                 n_bits += rho->code.length;
-                // get_bin_str(rho, code_str);
-                // printf("Árvore k=0\n");
-                // show_tree(k0_info.tree->root, 1);
-                // printf("\t\tMandando código de rho (%s) para a saída. \033[0;32mCódigo: %s, length: %d\033[0m\n", rho->repr, code_str, rho->code.length);
             }
             else
-            { /*Se o símbolo 'rho' ainda não estiver na tabela k=0*/
+            {   /*Se o símbolo 'rho' ainda não estiver na tabela k=0*/
                 /*Adiciona 'rho' à tabela*/
                 add_to_context(&k0_info, RHO);
             }
 
             /*Mandando código do símbolo para a saída (a partir da tabela de equiprobabilidade)*/
-            if (eqprob_info.n_symb > 1)
+            if (eqprob_info.n_symb > 1) 
             {
-                // get_bin_str(sb, code_str);
-                // printf("\t\tMandando código de %s para a saída. \033[0;32mCódigo: %s\033[0m\n", sb->repr, code_str);
-                // if(!strcmp(sb->repr, " ")){
-                //     printf("\033[0;31mPalavra: %s\033[0m\n", word);
-                //     sprintf(word, "");
-                //     if(!strcmp(word, "juvenil")){
-                //         getchar();
-                //     }
-                // }else{
-                //     strcat(word, sb->repr);
-                // }
+                get_bin_str(sb, code_str);
+                printf("Codificando \"%s\" a partir da tabela k = -1 - Código: %s\033[0m\n", sb->repr, code_str);
                 write_code_to_file(outfile, sb, &outbuffer, &outbuffer_length);
                 n_bits += sb->code.length;
             }
@@ -412,13 +398,10 @@ void compress(char *input_filepath, char *output_filepath)
 
     if (outbuffer_length > 0 && outbuffer_length < 8)
     {
-        printf("O outbuffer ainda tem %d bits livres!\n", outbuffer_length);
         outbuffer = outbuffer << outbuffer_length;
         fputc(outbuffer, outfile);
     }
 
-    printf("Number of bits: %d\n", n_bits);
-    // printf("Saída: %s\n", outputstring);
 
     fclose(file);
     fclose(outfile);
@@ -456,7 +439,9 @@ void decompress(char *input_filepath, char *output_filepath)
     ContextInfo k0_info;
     ContextInfo eqprob_info;
 
-    ContextInfo k1_table[TABLE_SIZE]; /*Dicionário que contém os contextos iguais a 1*/
+    ContextInfo* k1_table[TABLE_SIZE]; /*Dicionário que contém os contextos iguais a 1*/
+
+    for(int i = 0; i < TABLE_SIZE; i++) k1_table[i] = NULL;
 
 
     initialize_equiprob_table(&eqprob_info);
@@ -489,9 +474,22 @@ void decompress(char *input_filepath, char *output_filepath)
     Symbol *found_symbol = NULL;
 
     bool skip_k0 = false;
+    bool skip_k1 = false;
+
     char word[30];
 
     sprintf(word, "");
+
+    char context_str[5][30];
+
+    strcpy(context_str[K1], EMPTY_CONTEXT);
+    strcpy(context_str[K2], EMPTY_CONTEXT);
+    strcpy(context_str[K3], EMPTY_CONTEXT);
+    strcpy(context_str[K4], EMPTY_CONTEXT);
+    strcpy(context_str[K5], EMPTY_CONTEXT);
+    ContextInfo* ctx = NULL;
+
+    char code_str[30];
     while (explored < file_size)
     {
 
@@ -505,37 +503,118 @@ void decompress(char *input_filepath, char *output_filepath)
                 break;
             }
 
-            // printf("explored: %d/%d\n", explored, file_size);
             code->value = code->value << 1;
             code->value |= (byte & (int)pow(2, bits_to_read) - 1) >> (bits_to_read - 1);
             code->length++;
             bits_to_read--;
 
-            // printf("Code: %s, max_search_length(k=0): %d, max_search_length(k=-1): %d\n", code_str, k0_info.max_search_length, eqprob_info.max_search_length);
-            // printf("skip_k0 = %d\n", skip_k0);
+            Symbol xs;
 
-            // printf("\033[0;35mNUMERO DE SÍMBOLOS EM K=-1: %d\033[0m\n", eqprob_info.n_symb);
+            xs.code = *code;
+
+            get_bin_str(&xs, code_str);
+            printf("\033[0;32mCode: %s\033[0m\n", code_str);
 
 
+            // K = 1
+            if(!skip_k1 && strcmp(context_str[K1], EMPTY_CONTEXT)){ // Se a string de contexto não for vazia
+                /* Verificando a existência do contexto*/
+                ctx = get_context(k1_table, context_str[K1]); 
+                found_symbol = NULL;
+                bool is_rho = false;
+
+                if(ctx != NULL){ // Se o contexto existir
+
+                    // if(ctx->tree != NULL){
+                    //     printf("Árvore K = 1, contexto: %s\n", context_str[K1]);
+                    //     show_tree(ctx->tree->root, 1);
+                    // }
+                    Item** table = ctx->symb_table; // Obtém a tabela de símbolos
+                    /*Pesquisa pelo código dentro do contexto*/
+                    for(int i = 0; i < TABLE_SIZE; i++){
+                        if(table[i] != NULL && table[i]->value->code.value == code->value && table[i]->value->code.length == code->length)
+                        {
+                            /*Se tiver encontrado o código dentro desse contexto, incremente o contador*/
+                            found_symbol = table[i]->value;
+                            break;
+                        }
+                    }
+
+                    if(found_symbol != NULL){
+                        if(strcmp(found_symbol->repr, RHO))/*Se o símbolo encontrado não for um 'rho'*/
+                        {
+                            // printf("\033[0;32m<<<<<<<<<<<<<<<<<<<<<<<<<< Encontrou o símbolo \"%s\" no contexto \"%s\" >>>>>>>>>>>>>>>>>>>\033[0m\n", found_symbol->repr, context_str[K1]);
+                            fprintf(outfile, "%s", found_symbol->repr);
+                            increment_item(table, found_symbol->repr);
+                            code->value = code->length = 0;
+                            update_context_str(context_str[K1], K1+1, found_symbol->repr);
+                            rebuild_tree(ctx);
+
+                            if(!strcmp(found_symbol->repr, " ")){
+                                printf("\033[0;32mPalavra: %s\033[0m\n", word);
+                                sprintf(word, "");
+                                getchar();
+
+                            }else{
+                                strcat(word, found_symbol->repr);
+                            }
+
+                            explored++;
+                            printf("explored: %d/%d\n", explored, file_size);
+
+                        }else{
+                            printf("Encontrou um 'rho' em K=1\n");
+                            code->value = code->length = 0;
+                            skip_k1 = true;
+                        }
+                        continue;
+                    }else if(code->length < ctx->max_search_length){
+                        // printf("\tContinue procurando em k = 1...\n");
+                        continue;
+                    }
+                }else{ /*Se o contexto não existe ainda, crie*/
+                    ctx = create_context(k1_table, context_str[K1]);
+                    rebuild_tree(ctx);
+                }
+            }
+
+            printf("Skip_k0: %d\n", skip_k0);
+            //K = 0
             if(!skip_k0){
                 if((found_symbol = search_code(k0_info.symb_table, code)) != NULL){
                     if(!strcmp(found_symbol->repr, RHO)){
                         code->length = code->value = 0;
                         skip_k0 = true;
-                        // printf("\033[0;35mEncontrou um rho! N(k=0) = %d\033[0m\n", eqprob_info.n_symb);
+                        skip_k1 = true;
+                        printf("\033[0;35mEncontrou um rho! N(k=0) = %d\033[0m\n", eqprob_info.n_symb);
 
                         if(eqprob_info.n_symb == 1){
                             explored++;
+                            printf("explored: %d/%d\n", explored, file_size);
+
                             Symbol** extracted_symbols = extract_symbols(&eqprob_info, TABLE_SIZE);                            
                             fprintf(outfile, "%s", extracted_symbols[0]->repr);
 
-                            // if(!strcmp(extracted_symbols[0]->repr, " ")){
-                            //     printf("\033[0;31mPalavra: %s\033[0m\n", word);
-                            //     getchar();
-                            //     sprintf(word, "");
-                            // }else{
-                            //     strcat(word, extracted_symbols[0]->repr);
-                            // }
+                            if(ctx != NULL){
+                                add_to_context(ctx, extracted_symbols[0]->repr);
+    
+                                if(get_item(ctx->symb_table, RHO) != NULL){
+                                    increment_item(ctx->symb_table, RHO);
+                                }else{
+                                    add_to_context(ctx, RHO);
+                                }
+                            }
+
+                            if(!strcmp(extracted_symbols[0]->repr, " ")){
+                                printf("\033[0;32mPalavra: %s\033[0m\n", word);
+                                sprintf(word, "");
+                                getchar();
+
+                            }else{
+                                strcat(word, extracted_symbols[0]->repr);
+                            }
+
+                            update_context_str(context_str[K1], K1+1, extracted_symbols[0]->repr);
 
                             add_to_context(&k0_info, extracted_symbols[0]->repr);
 
@@ -543,27 +622,45 @@ void decompress(char *input_filepath, char *output_filepath)
                             eqprob_info.n_symb--;
 
                             remove_item(k0_info.symb_table, RHO);
+                            rebuild_tree(ctx); // Recontrói árvore de k = 1
+
                             k0_info.n_symb--;
                             rebuild_tree(&eqprob_info);
                             rebuild_tree(&k0_info);
                             skip_k0 = false;
                         }
                     }else{
-                        // printf("Mandando \033[0;31m\"%s\"\033[0m\n", found_symbol->repr);
+                        skip_k1 = false;
+                        if(ctx != NULL){
+                            add_to_context(ctx, found_symbol->repr);
+
+                            if(get_item(ctx->symb_table, RHO) != NULL){
+                                increment_item(ctx->symb_table, RHO);
+                            }else{
+                                add_to_context(ctx, RHO);
+                            }
+                        }
+                        printf("\033[0;32m<<<<<<<<<<<<<<<<<<<<< Mandando \033[0;31m\"%s\"\033[0m de K = 0 >>>>>>>>>>>>>>>>>>>>>>\033[0m\n", found_symbol->repr);
                         fprintf(outfile, "%s", found_symbol->repr);
                         increment_item(k0_info.symb_table, found_symbol->repr);
+
+                        if(!strcmp(found_symbol->repr, " ")){
+                            printf("\033[0;32mPalavra: %s\033[0m\n", word);
+                            sprintf(word, "");
+                            getchar();
+                        }else{
+                            strcat(word, found_symbol->repr);
+                        }
+
+                        update_context_str(context_str[K1], K1+1, found_symbol->repr);
+
+
                         rebuild_tree(&k0_info);
+                        rebuild_tree(ctx); // Recontrói árvore de k = 1
                         code->length = code->value = 0;
-
-                        // if(!strcmp(found_symbol->repr, " ")){
-                        //     printf("\033[0;31mPalavra: %s\033[0m\n", word);
-                        //     getchar();
-                        //     sprintf(word, "");
-                        // }else{
-                        //     strcat(word, found_symbol->repr);
-                        // }
-
                         explored++;
+                        printf("explored: %d/%d\n", explored, file_size);
+
                     }
                     continue;
                 }else if(code->length < k0_info.max_search_length){
@@ -571,19 +668,36 @@ void decompress(char *input_filepath, char *output_filepath)
                 }
             }
 
-            
+            //K = -1
             if((found_symbol = search_code(eqprob_info.symb_table, code)) != NULL){
                 explored++;
-                // printf("Mandando \033[0;32m\"%s\"\033[0m\n", found_symbol->repr);
-                // if(!strcmp(found_symbol->repr, " ")){
-                //     printf("\033[0;31mPalavra: %s\033[0m\n", word);
-                //     sprintf(word, "");
-                //     getchar();
-                // }else{
-                //     strcat(word, found_symbol->repr);
-                // }
+                printf("explored: %d/%d\n", explored, file_size);
+
+                printf("\033[0;32m <<<<<<<<<<<<<<<<<<<<<<<<<<<<< Mandando \033[0;32m\"%s\"\033[0m de k = -1\033[0m >>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n", found_symbol->repr);
                 fprintf(outfile, "%s", found_symbol->repr);
                 add_to_context(&k0_info, found_symbol->repr);
+
+                if(ctx != NULL){
+                    add_to_context(ctx, found_symbol->repr);
+
+                    if(get_item(ctx->symb_table, RHO) != NULL){
+                        increment_item(ctx->symb_table, RHO);
+                    }else{
+                        add_to_context(ctx, RHO);
+                    }
+                }
+
+
+                if(!strcmp(found_symbol->repr, " ")){
+                    printf("\033[0;32mPalavra: %s\033[0m\n", word);
+                    sprintf(word, "");
+                    getchar();
+                }else{
+                    strcat(word, found_symbol->repr);
+                }
+
+                update_context_str(context_str[K1], K1+1, found_symbol->repr);
+                
 
                 if(get_item(k0_info.symb_table, RHO) != NULL){
                     increment_item(k0_info.symb_table, RHO);
@@ -594,9 +708,12 @@ void decompress(char *input_filepath, char *output_filepath)
                 eqprob_info.n_symb--;
 
                 skip_k0 = false;
+                skip_k1 = false;
+
                 code->value = code->length = 0;
             }
 
+            if(ctx != NULL)rebuild_tree(ctx); // Recontrói árvore de k = 1
             rebuild_tree(&eqprob_info);
             rebuild_tree(&k0_info);
 
