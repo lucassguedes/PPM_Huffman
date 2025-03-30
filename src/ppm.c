@@ -200,6 +200,58 @@ ContextInfo* create_context(ContextInfo** contexts, char* key){
     return new_context;
 }
 
+/**
+ * Realiza  a  busca  pelo  código  dentro  do  contexto  e,  ao
+ * final, indica se o loop se devemos efetuar um continue (true),
+ * ou dar prosseguimento à busca nos próximos contextos.
+ */
+bool contextual_search_symbol(ContextInfo** contexts, 
+                       int K, uint8_t* outbuffer, int* outbuffer_length,
+                       char* context_str, FILE* outfile,
+                       char* buffer, int* explored){
+    ContextInfo* ctx;
+    char code_str[30];
+    Symbol* sb;
+    if(strcmp(context_str, EMPTY_CONTEXT)){ // SE a string de contexto não estiver vazia
+        ctx = get_context(contexts, context_str);
+
+        if(ctx != NULL){ /*O contexto existe*/
+            printf("O contexto \"%s\" já existe!\n", context_str);
+            sb = get_item(ctx->symb_table, buffer); /*Verificando se o símbolo atual está neste contexto*/
+            
+            if(sb != NULL) // Encontrou o símbolo dentro do contexto atual!
+            {
+                printf("Encontrou o símbolo \033[0;32m\"%s\"\033[0m no contexto \033[0;32m\"%s\"\033[0m - Código: ", buffer, context_str);
+                get_bin_str(sb, code_str);
+                printf("%s\n", code_str);
+                increment_item(ctx->symb_table, buffer); // Incrementando o contador do símbolo
+                write_code_to_file(outfile, sb, outbuffer, outbuffer_length); // Escrevemos o código no arquivo
+                update_context_str(context_str, K+1, buffer); //Atualizamos a string de contexto
+                rebuild_tree(ctx);
+                (*explored)++;
+                return true;
+            }
+            /*Caso não tenha encontrado o código neste contexto*/
+            Symbol* rho = get_item(ctx->symb_table, RHO); // Obtém o 'rho'
+            get_bin_str(rho, code_str);
+            printf("Codificando 'rho' para k = %d - Código: %s\n", K, code_str);
+            write_code_to_file(outfile, rho, outbuffer, outbuffer_length); // Escrevemos o código de 'rho' na saída
+            increment_item(ctx->symb_table, RHO); // Incrementa o contador de 'rho'
+            add_to_context(ctx, buffer); // Adiciona o novo símbolo ao contexto
+            rebuild_tree(ctx);
+            
+        }else{
+            ctx = create_context(contexts, context_str);
+            add_to_context(ctx, buffer);
+            add_to_context(ctx, RHO);
+            rebuild_tree(ctx);
+        }
+    }
+
+    update_context_str(context_str, K+1, buffer);
+
+    return false;
+}
 
 void compress(char *input_filepath, char *output_filepath)
 {
@@ -280,44 +332,12 @@ void compress(char *input_filepath, char *output_filepath)
         // update_context_str(context_str[K3], K3+1, buffer);
         // update_context_str(context_str[K4], K4+1, buffer);
         // update_context_str(context_str[K5], K5+1, buffer)
+        
         //K = 1
-        if(strcmp(context_str[K1], EMPTY_CONTEXT)){ // SE a string de contexto não estiver vazia
-            ctx = get_context(k1_table, context_str[K1]);
-
-            if(ctx != NULL){ /*O contexto existe*/
-                printf("O contexto \"%s\" já existe!\n", context_str[K1]);
-                sb = get_item(ctx->symb_table, buffer); /*Verificando se o símbolo atual está neste contexto*/
-                
-                if(sb != NULL) // Encontrou o símbolo dentro do contexto atual!
-                {
-                    printf("Encontrou o símbolo \033[0;32m\"%s\"\033[0m no contexto \033[0;32m\"%s\"\033[0m - Código: ", buffer, context_str[K1]);
-                    get_bin_str(sb, code_str);
-                    printf("%s\n", code_str);
-                    increment_item(ctx->symb_table, buffer); // Incrementando o contador do símbolo
-                    write_code_to_file(outfile, sb, &outbuffer, &outbuffer_length); // Escrevemos o código no arquivo
-                    update_context_str(context_str[K1], K1+1, buffer); //Atualizamos a string de contexto
-                    rebuild_tree(ctx);
-                    explored++;
-                    continue;
-                }
-                /*Caso não tenha encontrado o código neste contexto*/
-                Symbol* rho = get_item(ctx->symb_table, RHO); // Obtém o 'rho'
-                get_bin_str(rho, code_str);
-                printf("Codificando 'rho' para k = 1 - Código: %s\n", code_str);
-                write_code_to_file(outfile, rho, &outbuffer, &outbuffer_length); // Escrevemos o código de 'rho' na saída
-                increment_item(ctx->symb_table, RHO); // Incrementa o contador de 'rho'
-                add_to_context(ctx, buffer); // Adiciona o novo símbolo ao contexto
-                rebuild_tree(ctx);
-                
-            }else{
-                ctx = create_context(k1_table, context_str[K1]);
-                add_to_context(ctx, buffer);
-                add_to_context(ctx, RHO);
-                rebuild_tree(ctx);
-            }
+        if(contextual_search_symbol(k1_table, K1, &outbuffer, &outbuffer_length, context_str[K1], outfile, buffer, &explored))
+        {
+            continue;
         }
-
-        update_context_str(context_str[K1], K1+1, buffer);
 
 
         // K = 0
