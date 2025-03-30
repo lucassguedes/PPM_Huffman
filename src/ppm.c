@@ -543,6 +543,26 @@ bool contextual_search_code(FILE* outfile, ContextInfo** contexts, Code* code,
     return false;
 }
 
+
+void update_context_symbols(ContextInfo* ctx, Symbol* symbol){
+    if (ctx != NULL)
+    {
+        add_to_context(ctx, symbol->repr);
+
+        if (get_item(ctx->symb_table, RHO) != NULL)
+        {
+            increment_item(ctx->symb_table, RHO);
+        }
+        else
+        {
+            add_to_context(ctx, RHO);
+        }
+        rebuild_tree(ctx); // Recontrói árvore de k = 1
+    }
+
+}   
+
+
 void decompress(char *input_filepath, char *output_filepath)
 {
     /*Cria duas tabelas, uma para o contexto k=-1 (posição 0) e outra para k=0 (posição 1)*/
@@ -597,7 +617,7 @@ void decompress(char *input_filepath, char *output_filepath)
     strcpy(context_str[K3], EMPTY_CONTEXT);
     strcpy(context_str[K4], EMPTY_CONTEXT);
     strcpy(context_str[K5], EMPTY_CONTEXT);
-    ContextInfo *ctx = NULL;
+    ContextInfo *ctx_k1 = NULL;
 
     char code_str[30];
     while (explored < file_size)
@@ -634,7 +654,7 @@ void decompress(char *input_filepath, char *output_filepath)
                 continue;
             }
 
-            ctx = get_context(k1_table, context_str[K1]);
+            ctx_k1 = get_context(k1_table, context_str[K1]);
 
             
 
@@ -659,19 +679,8 @@ void decompress(char *input_filepath, char *output_filepath)
                             Symbol **extracted_symbols = extract_symbols(&eqprob_info, TABLE_SIZE);
                             fprintf(outfile, "%s", extracted_symbols[0]->repr);
 
-                            if (ctx != NULL)
-                            {
-                                add_to_context(ctx, extracted_symbols[0]->repr);
-
-                                if (get_item(ctx->symb_table, RHO) != NULL)
-                                {
-                                    increment_item(ctx->symb_table, RHO);
-                                }
-                                else
-                                {
-                                    add_to_context(ctx, RHO);
-                                }
-                            }
+                            
+                            update_context_symbols(ctx_k1, extracted_symbols[0]);
 
                             if (!strcmp(extracted_symbols[0]->repr, " "))
                             {
@@ -692,7 +701,6 @@ void decompress(char *input_filepath, char *output_filepath)
                             eqprob_info.n_symb--;
 
                             remove_item(k0_info.symb_table, RHO);
-                            rebuild_tree(ctx); // Recontrói árvore de k = 1
 
                             k0_info.n_symb--;
                             rebuild_tree(&eqprob_info);
@@ -704,19 +712,9 @@ void decompress(char *input_filepath, char *output_filepath)
                     else
                     {
                         skip_k1 = false;
-                        if (ctx != NULL)
-                        {
-                            add_to_context(ctx, found_symbol->repr);
 
-                            if (get_item(ctx->symb_table, RHO) != NULL)
-                            {
-                                increment_item(ctx->symb_table, RHO);
-                            }
-                            else
-                            {
-                                add_to_context(ctx, RHO);
-                            }
-                        }
+                        update_context_symbols(ctx_k1, found_symbol);
+
                         printf("\033[0;32m<<<<<<<<<<<<<<<<<<<<< Mandando \033[0;31m\"%s\"\033[0m de K = 0 >>>>>>>>>>>>>>>>>>>>>>\033[0m\n", found_symbol->repr);
                         fprintf(outfile, "%s", found_symbol->repr);
                         increment_item(k0_info.symb_table, found_symbol->repr);
@@ -735,7 +733,6 @@ void decompress(char *input_filepath, char *output_filepath)
                         update_context_str(context_str[K1], K1 + 1, found_symbol->repr);
 
                         rebuild_tree(&k0_info);
-                        rebuild_tree(ctx); // Recontrói árvore de k = 1
                         code->length = code->value = 0;
                         explored++;
                         printf("explored: %d/%d\n", explored, file_size);
@@ -758,19 +755,7 @@ void decompress(char *input_filepath, char *output_filepath)
                 fprintf(outfile, "%s", found_symbol->repr);
                 add_to_context(&k0_info, found_symbol->repr);
 
-                if (ctx != NULL)
-                {
-                    add_to_context(ctx, found_symbol->repr);
-
-                    if (get_item(ctx->symb_table, RHO) != NULL)
-                    {
-                        increment_item(ctx->symb_table, RHO);
-                    }
-                    else
-                    {
-                        add_to_context(ctx, RHO);
-                    }
-                }
+                update_context_symbols(ctx_k1, found_symbol);
 
                 if (!strcmp(found_symbol->repr, " "))
                 {
@@ -802,8 +787,7 @@ void decompress(char *input_filepath, char *output_filepath)
                 code->value = code->length = 0;
             }
 
-            if (ctx != NULL)
-                rebuild_tree(ctx); // Recontrói árvore de k = 1
+            
             rebuild_tree(&eqprob_info);
             rebuild_tree(&k0_info);
         }
