@@ -288,15 +288,20 @@ void compress(char *input_filepath, char *output_filepath)
      * uma  string,  cada  uma contém um mapa de símbolos e
      * seus respectivos códigos.
      */
-    ContextInfo *k1_table[TABLE_SIZE];
 
-    for (int i = 0; i < TABLE_SIZE; i++)
-        k1_table[i] = NULL;
+    const int K = 2;
 
-    ContextInfo *k2_table[TABLE_SIZE];
+    ContextInfo ***contextual_tables;
 
-    for (int i = 0; i < TABLE_SIZE; i++)
-        k2_table[i] = NULL;
+    contextual_tables = (ContextInfo***)malloc(sizeof(ContextInfo**)*K);
+
+    for(int k = 0; k < K; k++){
+        contextual_tables[k] = (ContextInfo**)malloc(sizeof(ContextInfo*)*TABLE_SIZE);
+        for (int i = 0; i < TABLE_SIZE; i++)
+        {   
+            contextual_tables[k][i] = NULL;
+        }
+    }
 
     initialize_equiprob_table(&eqprob_info);
     initialize_ppm_table(&k0_info);
@@ -358,17 +363,18 @@ void compress(char *input_filepath, char *output_filepath)
         // update_context_str(context_str[K4], K4+1, buffer);
         // update_context_str(context_str[K5], K5+1, buffer)
 
-        // K = 2
-        if (contextual_search_symbol(k2_table, K2, &outbuffer, &outbuffer_length, context_str[K2], outfile, buffer, &explored))
-        {
-            continue;
+
+        /*Pesquisando nos contextos K a K1*/
+        bool must_continue = false;
+        for(int k = K-1; k >= K1; k--){
+            if (contextual_search_symbol(contextual_tables[k], k, &outbuffer, &outbuffer_length, context_str[k], outfile, buffer, &explored))
+            {
+                must_continue = true;
+                break;
+            }
         }
 
-        // K = 1
-        if (contextual_search_symbol(k1_table, K1, &outbuffer, &outbuffer_length, context_str[K1], outfile, buffer, &explored))
-        {
-            continue;
-        }
+        if(must_continue) continue;
 
         // K = 0
         sb = get_item(k0_info.symb_table, buffer);
@@ -580,16 +586,21 @@ void decompress(char *input_filepath, char *output_filepath)
     ContextInfo k0_info;
     ContextInfo eqprob_info;
 
-    ContextInfo *k1_table[TABLE_SIZE]; /*Dicionário que contém os contextos iguais a 1*/
+    
+    
+    const int K = 2;
+    
+    ContextInfo ***contextual_tables = NULL;
+    
+    contextual_tables = (ContextInfo***)malloc(sizeof(ContextInfo**)*K);
 
-    for (int i = 0; i < TABLE_SIZE; i++)
-        k1_table[i] = NULL;
 
-
-    ContextInfo *k2_table[TABLE_SIZE]; /*Dicionário que contém os contextos iguais a 1*/
-
-    for (int i = 0; i < TABLE_SIZE; i++)
-        k2_table[i] = NULL;
+    for(int i = 0; i < K; i++){
+        contextual_tables[i] = (ContextInfo**)malloc(sizeof(ContextInfo*)*TABLE_SIZE);
+        for (int j = 0; j < TABLE_SIZE; j++){
+            contextual_tables[i][j] = NULL;
+        }
+    }
 
     initialize_equiprob_table(&eqprob_info);
     initialize_ppm_table(&k0_info);
@@ -637,8 +648,7 @@ void decompress(char *input_filepath, char *output_filepath)
     strcpy(context_str[K5], EMPTY_CONTEXT);
     
     
-    ContextInfo *ctx_k1 = NULL;
-    ContextInfo *ctx_k2 = NULL;
+    ContextInfo** current_contexts[K]; //Contextos atuais, para cada valor de K (1,2,3,4,5)
     
 
     char code_str[30];
@@ -672,28 +682,28 @@ void decompress(char *input_filepath, char *output_filepath)
             // K = 2
             skip_k2 = (skip_k1) ? skip_k1 : skip_k2; 
 
-            must_continue = contextual_search_code(outfile, k2_table, code, &found_symbol, &skip_k2, context_str[K2], K2, &explored);
+            must_continue = contextual_search_code(outfile, contextual_tables[K2], code, &found_symbol, &skip_k2, context_str[K2], K2, &explored);
 
             if(must_continue){
                 continue;
             }
 
-            ctx_k2 = get_context(k2_table, context_str[K2]);
+            current_contexts[K2] = get_context(contextual_tables[K2], context_str[K2]);
 
             // K = 1
-            must_continue = contextual_search_code(outfile, k1_table, code, &found_symbol, &skip_k1, context_str[K1], K1, &explored);
+            must_continue = contextual_search_code(outfile, contextual_tables[K1], code, &found_symbol, &skip_k1, context_str[K1], K1, &explored);
 
             if(must_continue){
                 if(found_symbol != NULL && strcmp(found_symbol->repr, RHO)){
                     printf("Atualizando K = 2, com o símbolo \"%s\"\n", found_symbol->repr);
-                    update_context_symbols(ctx_k2, found_symbol);
+                    update_context_symbols(current_contexts[K2], found_symbol);
                     update_context_str(context_str[K2], K2 + 1, found_symbol->repr);
                     skip_k2 = false;
                 }
                 continue;
             }
 
-            ctx_k1 = get_context(k1_table, context_str[K1]);
+            current_contexts[K1] = get_context(contextual_tables[K1], context_str[K1]);
 
             
 
@@ -719,12 +729,11 @@ void decompress(char *input_filepath, char *output_filepath)
                             Symbol **extracted_symbols = extract_symbols(&eqprob_info, TABLE_SIZE);
                             fprintf(outfile, "%s", extracted_symbols[0]->repr);
 
+                            for(int k = 0; k < K; k++){
+                                update_context_symbols(current_contexts[k], extracted_symbols[0]);
+                                update_context_str(context_str[k], k + 1, extracted_symbols[0]->repr);
+                            }
                             
-                            update_context_symbols(ctx_k1, extracted_symbols[0]);
-                            update_context_str(context_str[K1], K1 + 1, extracted_symbols[0]->repr);
-
-                            update_context_symbols(ctx_k2, extracted_symbols[0]);
-                            update_context_str(context_str[K2], K2 + 1, extracted_symbols[0]->repr);
 
                             if (!strcmp(extracted_symbols[0]->repr, " "))
                             {
@@ -759,13 +768,10 @@ void decompress(char *input_filepath, char *output_filepath)
                         skip_k1 = false;
                         skip_k2 = false;
 
-
-
-                        update_context_symbols(ctx_k1, found_symbol);
-                        update_context_str(context_str[K1], K1 + 1, found_symbol->repr);
-
-                        update_context_symbols(ctx_k2, found_symbol);
-                        update_context_str(context_str[K2], K2 + 1, found_symbol->repr);
+                        for(int k = 0; k < K; k++){
+                            update_context_symbols(current_contexts[k], found_symbol);
+                            update_context_str(context_str[k], k + 1, found_symbol->repr);
+                        }
 
                         printf("\033[0;32m<<<<<<<<<<<<<<<<<<<<< Mandando \033[0;31m\"%s\"\033[0m de K = 0 >>>>>>>>>>>>>>>>>>>>>>\033[0m\n", found_symbol->repr);
                         fprintf(outfile, "%s", found_symbol->repr);
@@ -806,11 +812,10 @@ void decompress(char *input_filepath, char *output_filepath)
                 fprintf(outfile, "%s", found_symbol->repr);
                 add_to_context(&k0_info, found_symbol->repr);
 
-                update_context_symbols(ctx_k1, found_symbol);
-                update_context_str(context_str[K1], K1 + 1, found_symbol->repr);
-
-                update_context_symbols(ctx_k2, found_symbol);
-                update_context_str(context_str[K2], K2 + 1, found_symbol->repr);
+                for(int k = 0; k < K; k++){
+                    update_context_symbols(current_contexts[k], found_symbol);
+                    update_context_str(context_str[k], k + 1, found_symbol->repr);
+                }
 
                 if (!strcmp(found_symbol->repr, " "))
                 {
@@ -848,6 +853,7 @@ void decompress(char *input_filepath, char *output_filepath)
             rebuild_tree(&k0_info);
         }
     }
+
 
     fclose(file);
     fclose(outfile);
