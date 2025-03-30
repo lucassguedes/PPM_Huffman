@@ -470,6 +470,79 @@ Symbol *search_code(Item *map[], Code *code)
     return NULL;
 }
 
+bool contextual_search_code(FILE* outfile, ContextInfo** contexts, Code* code,
+                            bool* skip, char* context_str, int K, int* explored){
+    
+
+    if((*skip) || !strcmp(context_str, EMPTY_CONTEXT)){
+        return false;
+    }
+
+    ContextInfo* ctx = NULL;
+    Symbol* found_symbol = NULL;
+
+    ctx = get_context(contexts, context_str);
+
+    if(ctx == NULL){
+        /*Se o contexto não existe ainda, crie*/
+        ctx = create_context(contexts, context_str);
+        rebuild_tree(ctx);
+        return false;
+    }
+
+    // Se a string de contexto não for vazia
+    /* Verificando a existência do contexto*/
+    found_symbol = NULL;
+    bool is_rho = false;
+
+    // Se o contexto existir
+
+    // if(ctx->tree != NULL){
+    //     printf("Árvore K = 1, contexto: %s\n", context_str);
+    //     show_tree(ctx->tree->root, 1);
+    // }
+    Item **table = ctx->symb_table; // Obtém a tabela de símbolos
+    /*Pesquisa pelo código dentro do contexto*/
+    for (int i = 0; i < TABLE_SIZE; i++)
+    {
+        if (table[i] != NULL && table[i]->value->code.value == code->value && table[i]->value->code.length == code->length)
+        {
+            /*Se tiver encontrado o código dentro desse contexto, incremente o contador*/
+            found_symbol = table[i]->value;
+            break;
+        }
+    }
+
+    if (found_symbol != NULL)
+    {
+        if (strcmp(found_symbol->repr, RHO)) /*Se o símbolo encontrado não for um 'rho'*/
+        {
+            printf("\033[0;32m<<<<<<<<<<<<<<<<<<<<<<<<<< Encontrou o símbolo \"%s\" no contexto \"%s\" >>>>>>>>>>>>>>>>>>>\033[0m\n", found_symbol->repr, context_str);
+            fprintf(outfile, "%s", found_symbol->repr);
+            increment_item(table, found_symbol->repr);
+            code->value = code->length = 0;
+            update_context_str(context_str, K1 + 1, found_symbol->repr);
+            rebuild_tree(ctx);
+
+            (*explored)++;
+        }
+        else
+        {
+            printf("Encontrou um 'rho' em K=1\n");
+            code->value = code->length = 0;
+            (*skip) = true;
+        }
+        return true;
+    }
+    
+    if (code->length < ctx->max_search_length) /*Se ainda não explorou todos, continue a pesquisa nesse contexto*/
+    {
+        return true;
+    }
+
+    return false;
+}
+
 void decompress(char *input_filepath, char *output_filepath)
 {
     /*Cria duas tabelas, uma para o contexto k=-1 (posição 0) e outra para k=0 (posição 1)*/
@@ -548,84 +621,22 @@ void decompress(char *input_filepath, char *output_filepath)
             bits_to_read--;
 
             Symbol xs;
-
             xs.code = *code;
 
             get_bin_str(&xs, code_str);
             printf("\033[0;32mCode: %s\033[0m\n", code_str);
 
+            // 
+
             // K = 1
-            if (!skip_k1 && strcmp(context_str[K1], EMPTY_CONTEXT))
-            { // Se a string de contexto não for vazia
-                /* Verificando a existência do contexto*/
-                ctx = get_context(k1_table, context_str[K1]);
-                found_symbol = NULL;
-                bool is_rho = false;
 
-                if (ctx != NULL)
-                { // Se o contexto existir
-
-                    // if(ctx->tree != NULL){
-                    //     printf("Árvore K = 1, contexto: %s\n", context_str[K1]);
-                    //     show_tree(ctx->tree->root, 1);
-                    // }
-                    Item **table = ctx->symb_table; // Obtém a tabela de símbolos
-                    /*Pesquisa pelo código dentro do contexto*/
-                    for (int i = 0; i < TABLE_SIZE; i++)
-                    {
-                        if (table[i] != NULL && table[i]->value->code.value == code->value && table[i]->value->code.length == code->length)
-                        {
-                            /*Se tiver encontrado o código dentro desse contexto, incremente o contador*/
-                            found_symbol = table[i]->value;
-                            break;
-                        }
-                    }
-
-                    if (found_symbol != NULL)
-                    {
-                        if (strcmp(found_symbol->repr, RHO)) /*Se o símbolo encontrado não for um 'rho'*/
-                        {
-                            // printf("\033[0;32m<<<<<<<<<<<<<<<<<<<<<<<<<< Encontrou o símbolo \"%s\" no contexto \"%s\" >>>>>>>>>>>>>>>>>>>\033[0m\n", found_symbol->repr, context_str[K1]);
-                            fprintf(outfile, "%s", found_symbol->repr);
-                            increment_item(table, found_symbol->repr);
-                            code->value = code->length = 0;
-                            update_context_str(context_str[K1], K1 + 1, found_symbol->repr);
-                            rebuild_tree(ctx);
-
-                            if (!strcmp(found_symbol->repr, " "))
-                            {
-                                printf("\033[0;32mPalavra: %s\033[0m\n", word);
-                                sprintf(word, "");
-                                getchar();
-                            }
-                            else
-                            {
-                                strcat(word, found_symbol->repr);
-                            }
-
-                            explored++;
-                            printf("explored: %d/%d\n", explored, file_size);
-                        }
-                        else
-                        {
-                            printf("Encontrou um 'rho' em K=1\n");
-                            code->value = code->length = 0;
-                            skip_k1 = true;
-                        }
-                        continue;
-                    }
-                    else if (code->length < ctx->max_search_length)
-                    {
-                        // printf("\tContinue procurando em k = 1...\n");
-                        continue;
-                    }
-                }
-                else
-                { /*Se o contexto não existe ainda, crie*/
-                    ctx = create_context(k1_table, context_str[K1]);
-                    rebuild_tree(ctx);
-                }
+            if(contextual_search_code(outfile, k1_table, code, &skip_k1, context_str[K1], K1, &explored)){
+                continue;
             }
+
+            ctx = get_context(k1_table, context_str[K1]);
+
+            
 
             printf("Skip_k0: %d\n", skip_k0);
             // K = 0
