@@ -223,7 +223,7 @@ bool contextual_search_symbol(ContextInfo **contexts,
                               char *buffer, int *explored)
 {
 
-    if (!strcmp(context_str, EMPTY_CONTEXT))
+    if (!strcmp(context_str, EMPTY_CONTEXT) || strlen(context_str) < K + 1)
     {
         update_context_str(context_str, K + 1, buffer);
         return false;    
@@ -289,7 +289,7 @@ void compress(char *input_filepath, char *output_filepath)
      * seus respectivos códigos.
      */
 
-    const int K = 2;
+    const int K = 4;
 
     ContextInfo ***contextual_tables;
 
@@ -491,7 +491,7 @@ bool contextual_search_code(FILE* outfile, ContextInfo** contexts, Code* code, S
     
 
     printf("context_str (k=%d): %s, skip: %d\n", K+1, context_str, *skip);
-    if((*skip) || !strcmp(context_str, EMPTY_CONTEXT)){
+    if((*skip) || (!strcmp(context_str, EMPTY_CONTEXT) || strlen(context_str) < K + 1)){
         return false;
     }
 
@@ -588,7 +588,7 @@ void decompress(char *input_filepath, char *output_filepath)
 
     
     
-    const int K = 2;
+    const int K = 4;
     
     ContextInfo ***contextual_tables = NULL;
     
@@ -632,8 +632,7 @@ void decompress(char *input_filepath, char *output_filepath)
     Symbol *found_symbol = NULL;
 
     bool skip_k0 = false;
-    bool skip_k1 = false;
-    bool skip_k2 = false;
+    bool* skip = (bool*)malloc(sizeof(bool)*K);
 
     char word[30];
 
@@ -680,25 +679,43 @@ void decompress(char *input_filepath, char *output_filepath)
             printf("\033[0;32mCode: %s\033[0m\n", code_str);
 
             // K = 2
-            skip_k2 = (skip_k1) ? skip_k1 : skip_k2; 
+            bool contextual_must_continue = false;
+            for(int k = K - 1; k >= K2; k--){
+                skip[k] = (skip[k-1]) ? skip[k-1] : skip[k]; 
 
-            must_continue = contextual_search_code(outfile, contextual_tables[K2], code, &found_symbol, &skip_k2, context_str[K2], K2, &explored);
+                must_continue = contextual_search_code(outfile, contextual_tables[k], code, &found_symbol, &skip[k], context_str[k], k, &explored);
 
-            if(must_continue){
-                continue;
+                if(must_continue){
+                    for(int j = k + 1; j < K; j++){
+                        if(found_symbol != NULL && strcmp(found_symbol->repr, RHO)){
+                            printf("Atualizando K = %d, com o símbolo \"%s\"\n", j, found_symbol->repr);
+                            update_context_symbols(current_contexts[j], found_symbol);
+                            update_context_str(context_str[j], j + 1, found_symbol->repr);
+                            skip[j] = false;
+                        }
+                    }
+                    contextual_must_continue = true;
+                    break;
+                }
+                current_contexts[k] = get_context(contextual_tables[k], context_str[k]);
+
+                if(explored == file_size) contextual_must_continue = true;
             }
 
-            current_contexts[K2] = get_context(contextual_tables[K2], context_str[K2]);
+            if(contextual_must_continue) continue;
+
 
             // K = 1
-            must_continue = contextual_search_code(outfile, contextual_tables[K1], code, &found_symbol, &skip_k1, context_str[K1], K1, &explored);
+            must_continue = contextual_search_code(outfile, contextual_tables[K1], code, &found_symbol, &skip[K1], context_str[K1], K1, &explored);
 
             if(must_continue){
-                if(found_symbol != NULL && strcmp(found_symbol->repr, RHO)){
-                    printf("Atualizando K = 2, com o símbolo \"%s\"\n", found_symbol->repr);
-                    update_context_symbols(current_contexts[K2], found_symbol);
-                    update_context_str(context_str[K2], K2 + 1, found_symbol->repr);
-                    skip_k2 = false;
+                for(int j = K2; j < K; j++){
+                    if(found_symbol != NULL && strcmp(found_symbol->repr, RHO)){
+                        printf("Atualizando K = 2, com o símbolo \"%s\"\n", found_symbol->repr);
+                        update_context_symbols(current_contexts[j], found_symbol);
+                        update_context_str(context_str[j], j + 1, found_symbol->repr);
+                        skip[j] = false;
+                    }
                 }
                 continue;
             }
@@ -717,7 +734,9 @@ void decompress(char *input_filepath, char *output_filepath)
                     {
                         code->length = code->value = 0;
                         skip_k0 = true;
-                        skip_k1 = true;
+                        for(int k = 0; k < K; k++){
+                            skip[k] = true;
+                        }
 
                         printf("\033[0;35mEncontrou um rho! N(k=0) = %d\033[0m\n", eqprob_info.n_symb);
 
@@ -758,15 +777,17 @@ void decompress(char *input_filepath, char *output_filepath)
                             rebuild_tree(&eqprob_info);
                             rebuild_tree(&k0_info);
                             skip_k0 = false;
-                            skip_k1 = false;
-                            skip_k2 = false;
+                            for(int k = 0; k < K; k++){
+                                skip[k] = false;
+                            }
 
                         }
                     }
                     else
                     {
-                        skip_k1 = false;
-                        skip_k2 = false;
+                        for(int k = 0; k < K; k++){
+                            skip[k] = false;
+                        }
 
                         for(int k = 0; k < K; k++){
                             update_context_symbols(current_contexts[k], found_symbol);
@@ -813,6 +834,7 @@ void decompress(char *input_filepath, char *output_filepath)
                 add_to_context(&k0_info, found_symbol->repr);
 
                 for(int k = 0; k < K; k++){
+                    printf("k = %d\n", k);
                     update_context_symbols(current_contexts[k], found_symbol);
                     update_context_str(context_str[k], k + 1, found_symbol->repr);
                 }
@@ -841,8 +863,10 @@ void decompress(char *input_filepath, char *output_filepath)
                 eqprob_info.n_symb--;
 
                 skip_k0 = false;
-                skip_k1 = false;
-                skip_k2 = false;
+                for(int k = 0; k < K; k++){
+                    skip[k] = false;
+                }
+
 
 
                 code->value = code->length = 0;
