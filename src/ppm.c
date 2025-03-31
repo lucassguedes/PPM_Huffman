@@ -2,7 +2,15 @@
 
 int g_context_limit;
 
-int limits[] = {4096, 4096, 4096, 4096, 2048};
+int limits[] = {2048, 2048, 2048, 2048, 2048};
+
+double information_sum = 0;
+int n_bits = 0;
+
+
+double get_information(ContextInfo* ctx, Symbol* sb){
+    return log2(ctx->tree->root->symbol.counter / (double)sb->counter);
+}
 
 
 void initialize_equiprob_table(ContextInfo *ctx)
@@ -291,6 +299,8 @@ bool contextual_search_symbol(ContextInfo **contexts, int n_contexts[],
         write_code_to_file(outfile, sb, outbuffer, outbuffer_length); // Escrevemos o código no arquivo
         update_context_str(context_str, K + 1, buffer);               // Atualizamos a string de contexto
         rebuild_tree(ctx);
+        n_bits += sb->code.length;
+        information_sum += get_information(ctx, sb);
         (*explored)++;
         return true;
     }
@@ -300,7 +310,10 @@ bool contextual_search_symbol(ContextInfo **contexts, int n_contexts[],
     // printf("Codificando 'rho' para k = %d - Código: %s\n", K + 1, code_str);
     write_code_to_file(outfile, rho, outbuffer, outbuffer_length); // Escrevemos o código de 'rho' na saída
     increment_item(ctx->symb_table, RHO);                          // Incrementa o contador de 'rho'
-    add_to_context(ctx, buffer);                                   // Adiciona o novo símbolo ao contexto
+    add_to_context(ctx, buffer);      
+    n_bits += rho->code.length;  
+    information_sum += get_information(ctx, rho);
+    // Adiciona o novo símbolo ao contexto
     rebuild_tree(ctx);
 
     update_context_str(context_str, K + 1, buffer);
@@ -372,8 +385,6 @@ void compress(char *input_filepath, char *output_filepath, int K)
 
     fseek(file, 0L, SEEK_SET);
 
-    int n_bits = 0;
-
     uint8_t outbuffer = 0;    /*Byte a ser mandado para a saída.*/
     int outbuffer_length = 8; /*Número restante de bits livres em outbuffer*/
     char word[30];
@@ -427,6 +438,7 @@ void compress(char *input_filepath, char *output_filepath, int K)
             /*Manda o código do símbolo para a saída*/
             write_code_to_file(outfile, sb, &outbuffer, &outbuffer_length);
             n_bits += sb->code.length;
+            information_sum += get_information(&k0_info, sb);
             /*Reconstruindo a árvore de k=0*/
             rebuild_tree(&k0_info);
             explored++;
@@ -451,6 +463,8 @@ void compress(char *input_filepath, char *output_filepath, int K)
                 // printf("Codificando um 'rho' de K=0 na saída - Código: %s\n", code_str);
                 write_code_to_file(outfile, rho, &outbuffer, &outbuffer_length);
                 n_bits += rho->code.length;
+                information_sum += get_information(&eqprob_info, rho);
+
             }
             else
             { /*Se o símbolo 'rho' ainda não estiver na tabela k=0*/
@@ -465,6 +479,7 @@ void compress(char *input_filepath, char *output_filepath, int K)
                 // printf("Codificando \"%s\" a partir da tabela k = -1 - Código: %s\033[0m\n", sb->repr, code_str);
                 write_code_to_file(outfile, sb, &outbuffer, &outbuffer_length);
                 n_bits += sb->code.length;
+                information_sum += get_information(&eqprob_info, sb);
             }
             else
             {
@@ -495,6 +510,10 @@ void compress(char *input_filepath, char *output_filepath, int K)
         fputc(outbuffer, outfile);
     }
 
+    printf("Número de bits: %d\n", n_bits);
+    printf("Número de bytes: %d\n", n_bits / 8);
+    printf("Comprimento médio: %.3f\n", n_bits / (double) file_size);
+    printf("Entropia: %.3f\n", information_sum / (double) file_size);
 
     for(int k = 0; k < K; k++){
         for (int i = 0; i < TABLE_SIZE; i++)
