@@ -1,4 +1,4 @@
-#include "hash_map.h"
+#include "context.h"
 
 void add_item(Item* map[], Symbol symb){
     int index = hash(symb.repr);    

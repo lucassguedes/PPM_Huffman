@@ -1,9 +1,5 @@
 #include "ppm.h"
 
-int g_context_limit;
-
-int limits[] = {2048, 2048, 2048, 2048, 2048};
-
 double information_sum = 0;
 int n_bits = 0;
 
@@ -216,7 +212,7 @@ ContextInfo *create_context(ContextInfo **contexts, char *key)
  * final, indica se o loop se devemos efetuar um continue (true),
  * ou dar prosseguimento à busca nos próximos contextos.
  */
-bool contextual_search_symbol(ContextInfo **contexts, int n_contexts[],
+bool contextual_search_symbol(ContextInfo **contexts,
                               int K, uint8_t *outbuffer, int *outbuffer_length,
                               char *context_str, FILE *outfile,
                               char *buffer, int *explored)
@@ -233,33 +229,12 @@ bool contextual_search_symbol(ContextInfo **contexts, int n_contexts[],
 
     if (ctx == NULL) // Se o contexto não existe
     {
-
-        if(n_contexts[K] > g_context_limit){
-            // printf("\033[0;31mOpaa!!Muitos contextos criados!! Mais de 4096!\033[0m\n");
-            
-            /*Limpando o contexto*/
-            for(int i = 0; i < TABLE_SIZE; i++){
-                ContextInfo* current_ctx = contexts[i];
-                contexts[i] = NULL;
-                while(current_ctx != NULL){
-                    ContextInfo * next = current_ctx->next;
-
-                    destroy_tree(current_ctx->tree);
-                    destroy_map(current_ctx->symb_table, TABLE_SIZE);
-                    free(current_ctx);
-                    current_ctx = next; 
-                }
-            }
-
-            n_contexts[K] = 0;
-        }
         /*Crie o contexto e adicione o novo símbolo*/
         ctx = create_context(contexts, context_str);
         add_to_context(ctx, buffer);
         add_to_context(ctx, RHO);
         rebuild_tree(ctx);
         update_context_str(context_str, K + 1, buffer);               // Atualizamos a string de contexto
-        n_contexts[K]++;
         return false; // Deve continuar a busca nos contextos seguintes
     }
 
@@ -295,16 +270,14 @@ bool contextual_search_symbol(ContextInfo **contexts, int n_contexts[],
     return false;
 }
 
-void compress(char *input_filepath, char *output_filepath, int K)
+void compress(char *input_filepath, char *output_filepath)
 {
-
-    g_context_limit = (!K) ? limits[0] : limits[K - 1];
-
-    printf("g_context_limit: %d\n", g_context_limit);
 
     /*Cria duas tabelas, uma para o contexto k=-1 (posição 0) e outra para k=0 (posição 1)*/
     ContextInfo k0_info;
     ContextInfo eqprob_info;
+
+    const int K = 4;
 
     /***
      * Dicionário  que  contém  os  contextos  iguais  a 1.
@@ -315,15 +288,12 @@ void compress(char *input_filepath, char *output_filepath, int K)
 
     ContextInfo ***contextual_tables = NULL;
 
-    int* n_contexts = NULL; // Número de contextos criados em cada K
 
 
     if(K){
-        n_contexts = (int*)malloc(sizeof(int)*K);
         contextual_tables = (ContextInfo***)malloc(sizeof(ContextInfo**)*K);
 
         for(int k = 0; k < K; k++){
-            n_contexts[k] = 0;
             contextual_tables[k] = (ContextInfo**)malloc(sizeof(ContextInfo*)*TABLE_SIZE);
             for (int i = 0; i < TABLE_SIZE; i++)
             {   
@@ -380,7 +350,7 @@ void compress(char *input_filepath, char *output_filepath, int K)
         if(K){
             bool must_continue = false;
             for(int k = K-1; k >= K1; k--){
-                if (contextual_search_symbol(contextual_tables[k], n_contexts, k, &outbuffer, &outbuffer_length, context_str[k], outfile, buffer, &explored))
+                if (contextual_search_symbol(contextual_tables[k], k, &outbuffer, &outbuffer_length, context_str[k], outfile, buffer, &explored))
                 {
                     must_continue = true;
                     break;
@@ -473,7 +443,6 @@ void compress(char *input_filepath, char *output_filepath, int K)
     printf("Comprimento médio: %.3f\n", n_bits / (double) file_size);
     printf("Entropia: %.3f\n", information_sum / (double) file_size);
 
-    free(n_contexts);
 
     for(int k = 0; k < K; k++){
         for (int i = 0; i < TABLE_SIZE; i++)
@@ -515,7 +484,7 @@ Symbol *search_code(Item *map[], Code *code)
     return NULL;
 }
 
-bool contextual_search_code(FILE* outfile, ContextInfo** contexts, int n_contexts[], Code* code, Symbol** found_symbol,
+bool contextual_search_code(FILE* outfile, ContextInfo** contexts, Code* code, Symbol** found_symbol,
                             bool* skip, char* context_str, int K, int* explored){
     
 
@@ -531,27 +500,6 @@ bool contextual_search_code(FILE* outfile, ContextInfo** contexts, int n_context
     if(ctx == NULL){
         // printf("\033[0;31mO contexto \"%s\" não existe!\033[0m\n", context_str);
         /*Se o contexto não existe ainda, crie*/
-        
-        if(n_contexts[K] > g_context_limit){
-            // printf("\033[0;31mOpaa!!Muitos contextos criados!! Mais de 4096!\033[0m\n");
-            
-            /*Limpando o contexto*/
-            for(int i = 0; i < TABLE_SIZE; i++){
-                ContextInfo* current_ctx = contexts[i];
-                contexts[i] = NULL;
-                while(current_ctx != NULL){
-                    ContextInfo * next = current_ctx->next;
-
-                    destroy_tree(current_ctx->tree);
-                    destroy_map(current_ctx->symb_table, TABLE_SIZE);
-                    free(current_ctx);
-                    current_ctx = next; 
-                }
-            }
-
-            n_contexts[K] = 0;
-        }
-        n_contexts[K]++;
         ctx = create_context(contexts, context_str);
         rebuild_tree(ctx);
         return false;
@@ -629,31 +577,20 @@ void update_context_symbols(ContextInfo* ctx, Symbol* symbol){
 }   
 
 
-void decompress(char *input_filepath, char *output_filepath, int K)
+void decompress(char *input_filepath, char *output_filepath)
 {
     /*Cria duas tabelas, uma para o contexto k=-1 (posição 0) e outra para k=0 (posição 1)*/
     ContextInfo k0_info;
     ContextInfo eqprob_info;
-
-
-    g_context_limit = (!K) ? limits[0] : limits[K - 1];
-
-
-    printf("g_context_limit: %d\n", g_context_limit);
-
-    int* n_contexts = NULL; // Número de contextos criados em cada K
-
-    
     ContextInfo ***contextual_tables = NULL;
+
+    const int K = 4;
     
     
     if(K){
-        n_contexts = (int*)malloc(sizeof(int)*K);
         contextual_tables = (ContextInfo***)malloc(sizeof(ContextInfo**)*K);
 
-
         for(int i = 0; i < K; i++){
-            n_contexts[i] = 0;
             contextual_tables[i] = (ContextInfo**)malloc(sizeof(ContextInfo*)*TABLE_SIZE);
             for (int j = 0; j < TABLE_SIZE; j++){
                 contextual_tables[i][j] = NULL;
@@ -722,7 +659,7 @@ void decompress(char *input_filepath, char *output_filepath, int K)
             }
 
             code->value = code->value << 1;
-            code->value |= (byte & (int)pow(2, bits_to_read) - 1) >> (bits_to_read - 1);
+            code->value |= (byte & ((int)pow(2, bits_to_read) - 1)) >> (bits_to_read - 1);
             code->length++;
             bits_to_read--;
 
@@ -731,7 +668,7 @@ void decompress(char *input_filepath, char *output_filepath, int K)
                 for(int k = K - 1; k >= K2; k--){
                     skip[k] = (skip[k-1]) ? skip[k-1] : skip[k]; 
 
-                    must_continue = contextual_search_code(outfile, contextual_tables[k], n_contexts, code, &found_symbol, &skip[k], context_str[k], k, &explored);
+                    must_continue = contextual_search_code(outfile, contextual_tables[k], code, &found_symbol, &skip[k], context_str[k], k, &explored);
 
                     if(must_continue){
                         if(k < K - 1){
@@ -757,7 +694,7 @@ void decompress(char *input_filepath, char *output_filepath, int K)
 
                 // K = 1                if(explored == file_size) contextual_must_continue = true;
 
-                must_continue = contextual_search_code(outfile, contextual_tables[K1], n_contexts, code, &found_symbol, &skip[K1], context_str[K1], K1, &explored);
+                must_continue = contextual_search_code(outfile, contextual_tables[K1], code, &found_symbol, &skip[K1], context_str[K1], K1, &explored);
 
                 if(must_continue){
                     for(int j = K2; j < K; j++){
@@ -894,8 +831,6 @@ void decompress(char *input_filepath, char *output_filepath, int K)
             rebuild_tree(&k0_info);
         }
     }
-
-    free(n_contexts);
 
     fclose(file);
     fclose(outfile);
