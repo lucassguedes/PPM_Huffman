@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define TABLE_SIZE 3000
+
 #define A 0.6180339887
 #define M pow(2, 14)
 

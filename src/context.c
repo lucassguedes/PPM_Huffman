@@ -1,7 +1,7 @@
 #include "context.h"
 
 void add_item(Item* map[], Symbol symb){
-    int index = hash(symb.repr);    
+    int index = hash(symb.repr) % TABLE_SIZE;    
     Item* new_item = (Item*)malloc(sizeof(Item));
     new_item->value = (Symbol*)malloc(sizeof(Symbol));
     new_item->value->code = symb.code;
@@ -24,7 +24,7 @@ void add_item(Item* map[], Symbol symb){
 }
 
 void remove_item(Item* map[], char* key){
-    const int index = hash(key);
+    const int index = hash(key) % TABLE_SIZE;
     
     Item* it = map[index];
     Item* prev = NULL;
@@ -47,7 +47,7 @@ void remove_item(Item* map[], char* key){
 }
 
 void decrement_item(Item* map[], char* key){
-    const int index = hash(key);
+    const int index = hash(key) % TABLE_SIZE;
     
     Item* it = map[index];
     Item* prev = NULL;
@@ -74,7 +74,7 @@ void decrement_item(Item* map[], char* key){
 }
 
 void increment_item(Item* map[], char* key){
-    const int index = hash(key);
+    const int index = hash(key) % TABLE_SIZE;
     Item* it = map[index];
     while(it != NULL){
         if(!strcmp(it->value->repr, key)){//Se encontrou o símbolo
@@ -86,7 +86,7 @@ void increment_item(Item* map[], char* key){
 }
 
 Symbol* get_item(Item* map[], char* key){
-    int index = hash(key);
+    int index = hash(key) % TABLE_SIZE;
 
     Item* it = map[index];
 

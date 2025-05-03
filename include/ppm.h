@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include "utils.h"
 
-#define TABLE_SIZE 50000
 #define EMPTY_CONTEXT "---"
 
 #define RHO "`"

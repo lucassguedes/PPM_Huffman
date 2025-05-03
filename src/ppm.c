@@ -164,7 +164,7 @@ void update_context_str(char context_str[], int k, char *buffer)
 
 ContextInfo *get_context(ContextInfo **contexts, char *key)
 {
-    const int index = hash(key);
+    const int index = hash(key) % TABLE_SIZE;
 
     ContextInfo *ctx = contexts[index];
 
@@ -174,6 +174,7 @@ ContextInfo *get_context(ContextInfo **contexts, char *key)
         {
             return ctx;
         }
+        ctx = ctx->next;
     }
 
     return NULL;
@@ -181,13 +182,15 @@ ContextInfo *get_context(ContextInfo **contexts, char *key)
 
 ContextInfo *create_context(ContextInfo **contexts, char *key)
 {
-    const int index = hash(key);
+    // printf("Creating context: \033[0;35m\"%s\"\033[0m\n", key);
+    const int index = hash(key) % TABLE_SIZE;
 
     ContextInfo *new_context = (ContextInfo *)malloc(sizeof(ContextInfo));
 
     initialize_ppm_table(new_context);
 
-    new_context->name = key;
+    new_context->name = (char*)malloc(sizeof(char)*(strlen(key) + 1));
+    strcpy(new_context->name, key);
 
     if (contexts[index] == NULL)
     {
@@ -234,7 +237,7 @@ bool contextual_search_symbol(ContextInfo **contexts,
         add_to_context(ctx, buffer);
         add_to_context(ctx, RHO);
         rebuild_tree(ctx);
-        update_context_str(context_str, K + 1, buffer);               // Atualizamos a string de contexto
+        update_context_str(context_str, K + 1, buffer);// Atualizamos a string de contexto
         return false; // Deve continuar a busca nos contextos seguintes
     }
 
@@ -437,6 +440,27 @@ void compress(char *input_filepath, char *output_filepath)
         outbuffer = outbuffer << outbuffer_length;
         fputc(outbuffer, outfile);
     }
+
+
+    // for(int k = 0; k < K; k++){
+    //     printf("K = %d\n", k);
+    //     for(int i = 0; i < TABLE_SIZE; i++){
+    //         if(contextual_tables[k][i] != NULL){
+    //             printf("[i = %d] %s:\n", i, contextual_tables[k][i]->name);
+
+    //             if(contextual_tables[k][i]->symb_table != NULL){
+    //                 for(int j = 0; j < contextual_tables[k][i]->n_symb; j++){
+    //                     printf("%s: %d\n", contextual_tables[k][i]->symb_table[j]->value->repr, contextual_tables[k][i]->symb_table[j]->value->counter);
+    //                 }
+    //             }
+
+                
+    //             getchar();
+    //         }
+    //     }
+    // }
+
+
 
     printf("Número de bits: %d\n", n_bits);
     printf("Número de bytes: %d\n", n_bits / 8);
