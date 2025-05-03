@@ -192,6 +192,8 @@ ContextInfo *create_context(ContextInfo **contexts, char *key)
     new_context->name = (char*)malloc(sizeof(char)*(strlen(key) + 1));
     strcpy(new_context->name, key);
 
+    new_context->next = NULL;
+
     if (contexts[index] == NULL)
     {
         contexts[index] = new_context;
@@ -442,23 +444,23 @@ void compress(char *input_filepath, char *output_filepath)
     }
 
 
-    // for(int k = 0; k < K; k++){
-    //     printf("K = %d\n", k);
-    //     for(int i = 0; i < TABLE_SIZE; i++){
-    //         if(contextual_tables[k][i] != NULL){
-    //             printf("[i = %d] %s:\n", i, contextual_tables[k][i]->name);
+    for(int k = 0; k < K; k++){
+        printf("K = %d\n", k);
+        for(int i = 0; i < TABLE_SIZE; i++){
+            if(contextual_tables[k][i] != NULL){
+                printf("[i = %d] %s: SIZE = %d\n", i, contextual_tables[k][i]->name, contextual_tables[k][i]->n_symb);
 
-    //             if(contextual_tables[k][i]->symb_table != NULL){
-    //                 for(int j = 0; j < contextual_tables[k][i]->n_symb; j++){
-    //                     printf("%s: %d\n", contextual_tables[k][i]->symb_table[j]->value->repr, contextual_tables[k][i]->symb_table[j]->value->counter);
-    //                 }
-    //             }
-
-                
-    //             getchar();
-    //         }
-    //     }
-    // }
+                if(contextual_tables[k][i]->symb_table != NULL){
+                    for(int j = 0; j < TABLE_SIZE; j++){
+                        
+                        if(contextual_tables[k][i]->symb_table[j] != NULL){
+                            printf("\t%s: %d\n", contextual_tables[k][i]->symb_table[j]->value->repr, contextual_tables[k][i]->symb_table[j]->value->counter);
+                        }
+                    }
+                }
+            }
+        }
+    }
 
 
 
@@ -471,10 +473,15 @@ void compress(char *input_filepath, char *output_filepath)
     for(int k = 0; k < K; k++){
         for (int i = 0; i < TABLE_SIZE; i++)
         {   
-            if(contextual_tables[k][i] != NULL){
-                destroy_tree(contextual_tables[k][i]->tree);
-                destroy_map(contextual_tables[k][i]->symb_table, TABLE_SIZE); 
-                free(contextual_tables[k][i]);
+            ContextInfo* ctx_info = contextual_tables[k][i];
+            ContextInfo* next = NULL;
+            while(ctx_info != NULL){
+                next = ctx_info->next;
+                destroy_tree(ctx_info->tree);
+                destroy_map(ctx_info->symb_table, TABLE_SIZE); 
+                free(ctx_info->name);
+                free(ctx_info);
+                ctx_info = next;
             }
         }
         free(contextual_tables[k]);
