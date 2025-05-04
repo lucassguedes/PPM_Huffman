@@ -448,6 +448,16 @@ void compress(char *input_filepath, char *output_filepath, bool save_model, char
     if(save_model){
         printf("Salvando modelo em %s...\n", path_to_save_model);
         FILE* modelfile = fopen(path_to_save_model, "w");
+
+        fprintf(modelfile,"0\n");
+
+        for(int i = 0; i < TABLE_SIZE; i++){
+            if(k0_info.symb_table[i] != NULL){
+                fprintf(modelfile,"%s,%d\n", k0_info.symb_table[i]->value->repr, k0_info.symb_table[i]->value->counter);
+            }
+        }
+        fprintf(modelfile,"-1\n");
+
         for(int k = 0; k < K; k++){
             fprintf(modelfile, "%d\n", k+1);
             for(int i = 0; i < TABLE_SIZE; i++){
