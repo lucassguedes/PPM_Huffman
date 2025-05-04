@@ -275,7 +275,7 @@ bool contextual_search_symbol(ContextInfo **contexts,
     return false;
 }
 
-void compress(char *input_filepath, char *output_filepath)
+void compress(char *input_filepath, char *output_filepath, bool save_model, char* path_to_save_model, bool load_model, char* loaded_model_path)
 {
 
     /*Cria duas tabelas, uma para o contexto k=-1 (posição 0) e outra para k=0 (posição 1)*/
@@ -309,6 +309,7 @@ void compress(char *input_filepath, char *output_filepath)
 
     initialize_equiprob_table(&eqprob_info);
     initialize_ppm_table(&k0_info);
+
 
     FILE *file = fopen(input_filepath, "r");
     FILE *outfile = fopen(output_filepath, "w");
@@ -444,22 +445,28 @@ void compress(char *input_filepath, char *output_filepath)
     }
 
 
-    for(int k = 0; k < K; k++){
-        printf("K = %d\n", k);
-        for(int i = 0; i < TABLE_SIZE; i++){
-            if(contextual_tables[k][i] != NULL){
-                printf("[i = %d] %s: SIZE = %d\n", i, contextual_tables[k][i]->name, contextual_tables[k][i]->n_symb);
-
-                if(contextual_tables[k][i]->symb_table != NULL){
-                    for(int j = 0; j < TABLE_SIZE; j++){
-                        
-                        if(contextual_tables[k][i]->symb_table[j] != NULL){
-                            printf("\t%s: %d\n", contextual_tables[k][i]->symb_table[j]->value->repr, contextual_tables[k][i]->symb_table[j]->value->counter);
+    if(save_model){
+        printf("Salvando modelo em %s...\n", path_to_save_model);
+        FILE* modelfile = fopen(path_to_save_model, "w");
+        for(int k = 0; k < K; k++){
+            fprintf(modelfile, "%d\n", k+1);
+            for(int i = 0; i < TABLE_SIZE; i++){
+                if(contextual_tables[k][i] != NULL){
+                    fprintf(modelfile, "%s:%d\n", contextual_tables[k][i]->name, contextual_tables[k][i]->n_symb);
+    
+                    if(contextual_tables[k][i]->symb_table != NULL){
+                        for(int j = 0; j < TABLE_SIZE; j++){
+                            
+                            if(contextual_tables[k][i]->symb_table[j] != NULL){
+                                fprintf(modelfile,"%s,%d\n", contextual_tables[k][i]->symb_table[j]->value->repr, contextual_tables[k][i]->symb_table[j]->value->counter);
+                            }
                         }
                     }
                 }
             }
+            fprintf(modelfile, "-1\n");
         }
+        fclose(modelfile);
     }
 
 

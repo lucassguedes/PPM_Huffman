@@ -26,7 +26,32 @@ int main(int argc, char** argv){
 
 
 	if(!strcmp(argv[3], "--compress")){
-		compress(argv[1], argv[2]);
+		bool load_model;
+		bool save_model;
+		char* loaded_model_path = NULL;
+		char* path_to_save = NULL;
+
+		if(argc > 4){
+			for(int i = 4; i < argc; i++){
+				if(!strcmp(argv[i], "--save-model")){
+					save_model = true;
+					i++;
+					path_to_save = (char*)malloc(sizeof(char)*(strlen(argv[i]) + 1));
+					strcpy(path_to_save, argv[i]);
+					continue;
+				}
+
+				if(!strcmp(argv[i], "--load-model")){
+					load_model = true;
+					i++;
+					loaded_model_path = (char*)malloc(sizeof(char)*(strlen(argv[i]) + 1));
+					strcpy(loaded_model_path, argv[i]);
+					continue;
+				}
+			}
+		}
+
+		compress(argv[1], argv[2], save_model, path_to_save, load_model, loaded_model_path);
 		return 0;
 	}
 

@@ -22,7 +22,7 @@ enum{
 
 void initialize_equiprob_table(ContextInfo* ctx);
 void initialize_ppm_table(ContextInfo* ctx);
-void compress(char* input_filepath, char* output_filepath);
+void compress(char* input_filepath, char* output_filepath, bool save_model, char* path_to_save_model, bool load_model, char* loaded_model_path);
 void decompress(char* input_filepath, char* output_filepath);
 void write_code_to_file(FILE* outfile, Symbol* sb, uint8_t* outbuffer, int* remaining_bits);
 
