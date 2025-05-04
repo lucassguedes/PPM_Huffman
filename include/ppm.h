@@ -20,7 +20,7 @@ enum{
 /*a-z + space*/
 #define ALPHABET_SIZE 27
 
-void initialize_equiprob_table(ContextInfo* ctx);
+void initialize_equiprob_table(ContextInfo* ctx, bool load_model);
 void initialize_ppm_table(ContextInfo* ctx);
 void compress(char* input_filepath, char* output_filepath, bool save_model, char* path_to_save_model, bool load_model, char* loaded_model_path);
 void decompress(char* input_filepath, char* output_filepath);

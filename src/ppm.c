@@ -9,12 +9,14 @@ double get_information(ContextInfo* ctx, Symbol* sb){
 }
 
 
-void initialize_equiprob_table(ContextInfo *ctx)
+void initialize_equiprob_table(ContextInfo *ctx, bool load_model)
 {
     ctx->name = NULL;
     ctx->next = NULL;
     /*A tabela k=-1 inicialmente deve conter todos os símbolos do alfabeto, com contadores iguais a 1*/
-    ctx->n_symb = 27;
+    
+    
+
     ctx->max_search_length = 0;
     ctx->symb_table = (Item **)malloc(sizeof(Item *) * TABLE_SIZE);
     ctx->tree = NULL;
@@ -22,6 +24,12 @@ void initialize_equiprob_table(ContextInfo *ctx)
     for (int i = 0; i < TABLE_SIZE; i++)
         ctx->symb_table[i] = NULL;
 
+
+    if(load_model){
+        ctx->n_symb = 0;
+        return;
+    }
+    ctx->n_symb = 27;
     /*Adicionando símbolos do alfabeto*/
     Symbol s;
     s.repr = (char *)malloc(sizeof(char) * 2);
@@ -40,7 +48,7 @@ void initialize_equiprob_table(ContextInfo *ctx)
     free(s.repr);
 
     /*Extraindo símbolos da tabela de símbolos - esta operação é feita sempre que a árvore
-      precisa ser reconstruída.
+    precisa ser reconstruída.
     */
     Symbol **all_symbols = extract_symbols(ctx, TABLE_SIZE);
     ctx->tree = create_tree(all_symbols, 27);
@@ -48,6 +56,7 @@ void initialize_equiprob_table(ContextInfo *ctx)
     set_codes(ctx);
 
     free(all_symbols);
+    
 }
 
 void initialize_ppm_table(ContextInfo *ctx)
@@ -307,8 +316,137 @@ void compress(char *input_filepath, char *output_filepath, bool save_model, char
         }
     }
 
-    initialize_equiprob_table(&eqprob_info);
+    initialize_equiprob_table(&eqprob_info, load_model);
     initialize_ppm_table(&k0_info);
+
+
+    if(load_model){
+        printf("Carregando modelo do arquivo %s...\n", loaded_model_path);
+        FILE* modelfile = fopen(loaded_model_path, "r");
+        char line_buffer[100];
+
+        //Leitura do k=0
+        char character_buff[100];
+        char word_buffer[100];
+        while(fgets(line_buffer, sizeof(line_buffer), modelfile) != NULL){
+
+            if(!strcmp(line_buffer, "-1\n")){
+                break;
+            }
+
+            sprintf(character_buff, "");
+            sprintf(word_buffer, "");
+            int i;
+            for(i = 0; line_buffer[i] != ','; i++){
+                sprintf(character_buff, "%c", line_buffer[i]);
+                strcat(word_buffer, character_buff);
+            }
+
+            add_to_context(&k0_info, word_buffer);
+
+            Symbol* sb = get_item(k0_info.symb_table, word_buffer);
+
+
+            sprintf(character_buff, "");
+            sprintf(word_buffer, "");
+            int j;
+            for(j = i+1; line_buffer[j] != '\n'; j++){
+                sprintf(character_buff, "%c", line_buffer[j]);
+                strcat(word_buffer, character_buff);
+            }
+
+            sb->counter = atoi(word_buffer);
+        }
+
+        rebuild_tree(&k0_info);
+
+
+        //Lendo K > 0
+
+        for(int k = 0; k < K; k++){
+            char context_str[100];
+            int context_size;
+            while(true){
+                fgets(line_buffer, sizeof(line_buffer), modelfile);
+
+                if(!strcmp(line_buffer, "-1\n")){
+                    printf("Fim do contexto K = %d\n", k+1);
+                    break;
+                }
+
+                //Lê a string do contexto, e a quantidade de símbolos dentro dele
+                sprintf(character_buff, "");
+                sprintf(word_buffer, "");
+                int i;
+                for(i = 0; line_buffer[i] != ':'; i++){
+                    sprintf(character_buff, "%c", line_buffer[i]);
+                    strcat(word_buffer, character_buff);
+                }
+
+                strcpy(context_str, word_buffer);
+
+                printf("K = %d, contexto: \033[0;35m\"%s\"\033[0m\n", k+1, context_str);
+
+
+                create_context(contextual_tables[k], context_str);
+
+                ContextInfo* ctx = get_context(contextual_tables[k], context_str);
+
+                sprintf(character_buff, "");
+                sprintf(word_buffer, "");
+                int j;
+                for(j = i+1; line_buffer[j] != '\n'; j++){
+                    sprintf(character_buff, "%c", line_buffer[j]);
+                    strcat(word_buffer, character_buff);
+                }
+
+                context_size = atoi(word_buffer);
+
+                // Leitura dos símbolos presentes no contexto atual
+                for(int i = 0; i < context_size; i++){
+                    fgets(line_buffer, sizeof(line_buffer), modelfile);
+
+                    sprintf(character_buff, "");
+                    sprintf(word_buffer, "");
+                    int i;
+                    for(i = 0; line_buffer[i] != ','; i++){
+                        sprintf(character_buff, "%c", line_buffer[i]);
+                        strcat(word_buffer, character_buff);
+                    }
+
+                    printf("\tAdicionando \033[0;35m\"%s\"\033[0m ao contexto atual, com contador ");
+
+                    add_to_context(ctx, word_buffer);
+
+                    Symbol* sb = get_item(ctx->symb_table, word_buffer);
+
+
+                    sprintf(character_buff, "");
+                    sprintf(word_buffer, "");
+                    int j;
+                    for(j = i+1; line_buffer[j] != '\n'; j++){
+                        sprintf(character_buff, "%c", line_buffer[j]);
+                        strcat(word_buffer, character_buff);
+                    }
+
+                    sb->counter = atoi(word_buffer);
+
+                    printf("%d.\n", sb->counter);
+                    getchar();
+                }
+
+                //Construção da árvore de Huffman
+                rebuild_tree(ctx);
+            }
+        }
+
+
+        
+
+
+
+        fclose(modelfile);
+    }
 
 
     FILE *file = fopen(input_filepath, "r");
@@ -449,17 +587,14 @@ void compress(char *input_filepath, char *output_filepath, bool save_model, char
         printf("Salvando modelo em %s...\n", path_to_save_model);
         FILE* modelfile = fopen(path_to_save_model, "w");
 
-        fprintf(modelfile,"0\n");
-
         for(int i = 0; i < TABLE_SIZE; i++){
             if(k0_info.symb_table[i] != NULL){
                 fprintf(modelfile,"%s,%d\n", k0_info.symb_table[i]->value->repr, k0_info.symb_table[i]->value->counter);
             }
         }
-        fprintf(modelfile,"-1\n");
+        fprintf(modelfile,"-1\n");//O -1 marca o fim do contexto K
 
         for(int k = 0; k < K; k++){
-            fprintf(modelfile, "%d\n", k+1);
             for(int i = 0; i < TABLE_SIZE; i++){
                 if(contextual_tables[k][i] != NULL){
                     fprintf(modelfile, "%s:%d\n", contextual_tables[k][i]->name, contextual_tables[k][i]->n_symb);
@@ -474,7 +609,7 @@ void compress(char *input_filepath, char *output_filepath, bool save_model, char
                     }
                 }
             }
-            fprintf(modelfile, "-1\n");
+            fprintf(modelfile, "-1\n"); //O -1 marca o fim do contexto K
         }
         fclose(modelfile);
     }
@@ -646,7 +781,7 @@ void decompress(char *input_filepath, char *output_filepath)
         }
     }
 
-    initialize_equiprob_table(&eqprob_info);
+    initialize_equiprob_table(&eqprob_info, false);
     initialize_ppm_table(&k0_info);
 
     FILE *file = fopen(input_filepath, "r");
