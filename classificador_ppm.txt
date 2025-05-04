@@ -1,0 +1,85 @@
+Capitães de Areia (Modernismo)
+	- Comprimento Médio
+		-- Modernismo: 2.297 bits/símbolo
+		-- Realismo:   2.384 bits/símbolo
+		-- Romantismo: 2.396 bits/símbolo
+	Classificação: Modernismo (menor comprimento médio)
+	
+A Hora da Estrela (Modernismo)
+	- Comprimento Médio
+		-- Modernismo: 2.486 bits/símbolo
+		-- Realismo:   2.565 bits/símbolo
+		-- Romantismo: 2.597 bits/símbolo
+	Classificação: Modernismo
+	
+Vidas Secas (Modernismo)
+	- Comprimento Médio
+		-- Modernismo: 2.394 bits/símbolo
+		-- Realismo:   2.499 bits/símbolo
+		-- Romantismo: 2.521 bits/símbolo
+	Classificação: Modernismo
+	
+---------------------------------------------------------------
+Memórias Póstumas de Brás Cubas (Realismo)
+	- Comprimento Médio:
+		-- Modernismo: 2.489 bits/símbolo
+		-- Realismo:   2.409 bits/símbolo
+		-- Romantismo: 2.494 bits/símbolo
+	Classificação: Realismo
+	
+O Ateneu (Realismo)
+	- Comprimento Médio:
+		-- Modernismo:  2.545 bits/símbolo
+		-- Realismo:    2.457 bits/símbolo
+		-- Romantismo:  2.543 bits/símbolo
+	Classificação: Realismo
+	
+	
+Quincas Borba (Realismo)
+	- Comprimento Médio
+		-- Modernismo: 2.406 bits/símbolo
+		-- Realismo:   2.331 bits/símbolo
+		-- Romantismo: 2.418 bits/símbolo
+	Classificação: Realismo
+	
+----------------------------------------------------------------
+
+Iracema (Romantismo)
+	- Comprimento Médio
+		-- Modernismo: 2.534 bits/símbolo
+		-- Realismo:   2.536 bits/símbolo
+		-- Romantismo: 2.424 bits/símbolo
+	Classificação: Romantismo
+		
+		
+Lira dos Vinte Anos (Romantismo)
+	- Comprimento Médio
+		-- Modernismo: 2.633 bits/símbolo
+		-- Realismo:   2.629 bits/símbolo
+		-- Romantismo: 2.514 bits/símbolo
+	Classificação: Romantismo
+	
+O Guarani (Romantismo)
+	- Comprimento Médio
+		-- Modernismo: 2.308 bits/símbolo
+		-- Realismo:   2.298 bits/símbolo
+		-- Romantismo: 2.239 bits/símbolo
+	Classificação: Romantismo
+		
+Ubirajara (Romantismo)
+	- Comprimento Médio
+		-- Modernismo: 2.308 bits/símbolo
+		-- Realismo:   2.298 bits/símbolo
+		-- Romantismo: 2.239 bits/símbolo
+	Classificação: Romantismo
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		

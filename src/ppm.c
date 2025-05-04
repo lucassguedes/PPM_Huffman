@@ -370,7 +370,6 @@ void compress(char *input_filepath, char *output_filepath, bool save_model, char
                 fgets(line_buffer, sizeof(line_buffer), modelfile);
 
                 if(!strcmp(line_buffer, "-1\n")){
-                    printf("Fim do contexto K = %d\n", k+1);
                     break;
                 }
 
@@ -384,9 +383,6 @@ void compress(char *input_filepath, char *output_filepath, bool save_model, char
                 }
 
                 strcpy(context_str, word_buffer);
-
-                printf("K = %d, contexto: \033[0;35m\"%s\"\033[0m\n", k+1, context_str);
-
 
                 create_context(contextual_tables[k], context_str);
 
@@ -413,9 +409,6 @@ void compress(char *input_filepath, char *output_filepath, bool save_model, char
                         sprintf(character_buff, "%c", line_buffer[i]);
                         strcat(word_buffer, character_buff);
                     }
-
-                    printf("\tAdicionando \033[0;35m\"%s\"\033[0m ao contexto atual, com contador ");
-
                     add_to_context(ctx, word_buffer);
 
                     Symbol* sb = get_item(ctx->symb_table, word_buffer);
@@ -430,9 +423,6 @@ void compress(char *input_filepath, char *output_filepath, bool save_model, char
                     }
 
                     sb->counter = atoi(word_buffer);
-
-                    printf("%d.\n", sb->counter);
-                    getchar();
                 }
 
                 //Construção da árvore de Huffman
